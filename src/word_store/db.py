@@ -35,11 +35,40 @@ class DatabaseConfigError(ValueError):
     """Raised when a required Postgres DSN is not configured."""
 
 
+def _detect_postgres_dsn() -> str | None:
+    """Auto-detect local Postgres by scanning for Unix socket files."""
+    import glob
+    import re
+    socket_patterns = [
+        "/tmp/.s.PGSQL.*",
+        "/var/run/postgresql/.s.PGSQL.*",
+        "/var/tmp/.s.PGSQL.*",
+    ]
+    ports: list[int] = []
+    for pattern in socket_patterns:
+        for path in glob.glob(pattern):
+            if path.endswith(".lock"):
+                continue
+            m = re.search(r"\.s\.PGSQL\.(\d+)$", path)
+            if m:
+                ports.append(int(m.group(1)))
+    if not ports:
+        return None
+    port = 5432 if 5432 in ports else min(ports)
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or "postgres"
+    if port == 5432:
+        return f"postgresql://{user}@localhost/docx_agent"
+    return f"postgresql://{user}@localhost:{port}/docx_agent"
+
+
 def resolve_database_dsn(dsn: str | None = None) -> str:
-    """Resolve DB DSN from explicit value or supported environment variables."""
+    """Resolve DB DSN from explicit value, environment variables, or auto-detection."""
     candidate = dsn or os.environ.get("DOCX_AGENT_DATABASE_DSN") or os.environ.get("DATABASE_URL")
     if candidate and candidate.strip():
         return candidate.strip()
+    detected = _detect_postgres_dsn()
+    if detected:
+        return detected
     raise DatabaseConfigError(
         "database DSN is required: pass dsn or set DOCX_AGENT_DATABASE_DSN/DATABASE_URL"
     )
