@@ -164,19 +164,35 @@ def _get_oauth_manager(config: DataSourcesConfig) -> OAuthManager:
 # ── httpx client with RBC SSL ─────────────────────────────────────────────────
 
 def _build_http_client(verify_ssl: bool = True):  # type: ignore[return]
-    """Return an httpx.Client only when SSL verification must be disabled.
+    """Build an httpx.Client with the correct SSL configuration.
 
-    When verify_ssl=True we return None, letting the OpenAI SDK use its
-    default httpx client.  That client uses Python's ssl module default
-    context, which respects whatever rbc_security.enable_certs() injected.
-    Passing an explicit certifi path would bypass that injection.
+    rbc_security.enable_certs() sets SSL_CERT_FILE / REQUESTS_CA_BUNDLE to
+    the RBC CA bundle path.  We read those env vars and build an explicit
+    ssl.SSLContext so httpx uses the RBC certs.  Without this, httpx does
+    not pick up the env vars on its own.
     """
+    try:
+        import httpx
+    except ImportError:
+        return None
+
     if not verify_ssl:
-        try:
-            import httpx
-            return httpx.Client(verify=False)
-        except ImportError:
-            return None
+        return httpx.Client(verify=False)
+
+    import os
+    import ssl
+
+    ca_bundle = (
+        os.environ.get("SSL_CERT_FILE")
+        or os.environ.get("REQUESTS_CA_BUNDLE")
+        or os.environ.get("CURL_CA_BUNDLE")
+    )
+    if ca_bundle and os.path.isfile(ca_bundle):
+        logger.debug("httpx SSL context: using CA bundle %s", ca_bundle)
+        ssl_ctx = ssl.create_default_context(cafile=ca_bundle)
+        return httpx.Client(verify=ssl_ctx)
+
+    # No RBC bundle available — let httpx use the system default
     return None
 
 
