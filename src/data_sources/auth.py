@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -47,14 +46,7 @@ def setup_rbc_ssl() -> None:
         try:
             import rbc_security  # type: ignore[import]
             rbc_security.enable_certs()
-            # Broadcast the patched certifi path via standard env vars so that
-            # ALL HTTP clients (requests, httpx, urllib3) pick up the RBC CA
-            # bundle regardless of whether they call certifi.where() themselves.
-            import certifi
-            ca_bundle = certifi.where()
-            os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
-            os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
-            logger.info("rbc_security: SSL certificates enabled (CA bundle: %s)", ca_bundle)
+            logger.info("rbc_security: SSL certificates enabled")
         except ImportError:
             logger.debug("rbc_security not available — using system certificate store")
         except Exception as exc:
@@ -172,14 +164,20 @@ def _get_oauth_manager(config: DataSourcesConfig) -> OAuthManager:
 # ── httpx client with RBC SSL ─────────────────────────────────────────────────
 
 def _build_http_client(verify_ssl: bool = True):  # type: ignore[return]
-    """Build an httpx.Client using certifi's CA bundle (patched by rbc_security)."""
-    try:
-        import certifi
-        import httpx
-        verify = certifi.where() if verify_ssl else False
-        return httpx.Client(verify=verify)
-    except ImportError:
-        return None  # OpenAI SDK will use its own default httpx client
+    """Return an httpx.Client only when SSL verification must be disabled.
+
+    When verify_ssl=True we return None, letting the OpenAI SDK use its
+    default httpx client.  That client uses Python's ssl module default
+    context, which respects whatever rbc_security.enable_certs() injected.
+    Passing an explicit certifi path would bypass that injection.
+    """
+    if not verify_ssl:
+        try:
+            import httpx
+            return httpx.Client(verify=False)
+        except ImportError:
+            return None
+    return None
 
 
 # ── Public factory ────────────────────────────────────────────────────────────
