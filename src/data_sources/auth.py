@@ -193,12 +193,18 @@ def build_openai_client(config: DataSourcesConfig) -> _openai.OpenAI:
         try:
             api_key = _get_oauth_manager(config).get_token()
         except Exception as exc:
-            logger.error("OAuth token fetch failed: %s — falling back to OPENAI_API_KEY", exc)
+            logger.error("OAuth token fetch failed: %s — falling back to OPENAI_API_KEY", exc, exc_info=True)
             api_key = config.openai_api_key
     else:
         api_key = config.openai_api_key
 
-    kwargs: dict = {"api_key": api_key or "no-key"}
+    if not api_key:
+        raise ValueError(
+            "No API key available: OPENAI_API_KEY is empty and OAuth either is not configured "
+            "or failed to fetch a token."
+        )
+
+    kwargs: dict = {"api_key": api_key}
 
     if config.openai_base_url:
         kwargs["base_url"] = config.openai_base_url
@@ -207,4 +213,10 @@ def build_openai_client(config: DataSourcesConfig) -> _openai.OpenAI:
     if http_client is not None:
         kwargs["http_client"] = http_client
 
+    logger.debug(
+        "OpenAI client: base_url=%s auth=%s ssl_verify=%s",
+        config.openai_base_url or "(default)",
+        "oauth" if config.is_oauth_configured() else "api_key",
+        not config.openai_skip_ssl_verify,
+    )
     return openai.OpenAI(**kwargs)

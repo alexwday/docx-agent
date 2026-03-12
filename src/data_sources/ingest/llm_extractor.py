@@ -221,7 +221,7 @@ def extract_sheet_metadata(
             if attempt == _MAX_RETRIES:
                 raise
             wait = _RETRY_DELAY * attempt
-            logger.warning("LLM retry %d/%d after %.1fs: %s", attempt, _MAX_RETRIES, wait, exc)
+            logger.warning("LLM retry %d/%d after %.1fs: %s", attempt, _MAX_RETRIES, wait, exc, exc_info=True)
             time.sleep(wait)
 
     # Should not reach here, but satisfy type checker

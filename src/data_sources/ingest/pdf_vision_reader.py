@@ -154,7 +154,8 @@ def _call_vision_api(
                 raise
             wait = _RETRY_DELAY_S * attempt
             logger.warning(
-                "Vision API retry %d/%d after %.1fs: %s", attempt, _MAX_RETRIES, wait, exc
+                "Vision API retry %d/%d after %.1fs: %s", attempt, _MAX_RETRIES, wait, exc,
+                exc_info=True,
             )
             time.sleep(wait)
 

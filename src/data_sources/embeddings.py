@@ -82,6 +82,7 @@ def embed_texts(
                     _MAX_RETRIES,
                     wait,
                     exc,
+                    exc_info=True,
                 )
                 time.sleep(wait)
 

@@ -701,7 +701,7 @@ class SuppFinancialsRetriever:
                 dimensions=self.config.embedding_dimensions,
             )
         except Exception as exc:
-            logger.warning("Embedding phase failed; continuing without dense retrieval: %s", exc)
+            logger.warning("Embedding phase failed; continuing without dense retrieval: %s", exc, exc_info=True)
             return {}
 
         per_channel: dict[str, dict[str, dict[str, Any]]] = {
