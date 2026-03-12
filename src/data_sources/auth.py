@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -46,7 +47,14 @@ def setup_rbc_ssl() -> None:
         try:
             import rbc_security  # type: ignore[import]
             rbc_security.enable_certs()
-            logger.info("rbc_security: SSL certificates enabled")
+            # Broadcast the patched certifi path via standard env vars so that
+            # ALL HTTP clients (requests, httpx, urllib3) pick up the RBC CA
+            # bundle regardless of whether they call certifi.where() themselves.
+            import certifi
+            ca_bundle = certifi.where()
+            os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
+            os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
+            logger.info("rbc_security: SSL certificates enabled (CA bundle: %s)", ca_bundle)
         except ImportError:
             logger.debug("rbc_security not available — using system certificate store")
         except Exception as exc:
