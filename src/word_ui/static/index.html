@@ -1,0 +1,3071 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Finance Assist - Research &amp; Reporting</title>
+    <style>
+      :root {
+        --sidebar-bg: #f5f6f8;
+        --sidebar-surface: #ffffff;
+        --sidebar-border: #e2e4ea;
+        --sidebar-text: #2d3142;
+        --sidebar-muted: #8a8fa4;
+        --sidebar-accent: #4a7cde;
+        --center-bg: #ffffff;
+        --center-surface: #f8f9fa;
+        --user-bubble: #e8f0fe;
+        --user-accent: #1a73e8;
+        --assistant-bubble: #f1f3f4;
+        --assistant-accent: #5f6368;
+        --error-bg: #fce8e6;
+        --error-text: #c5221f;
+        --border-light: #e0e0e0;
+        --text-primary: #202124;
+        --text-secondary: #5f6368;
+        --left-width: 320px;
+        --right-width: min(520px, 35vw);
+        --transition: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text-primary);
+        background: var(--center-bg);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: var(--left-width) 1fr var(--right-width);
+        height: 100vh;
+        transition: grid-template-columns var(--transition);
+      }
+      .app.left-collapsed { grid-template-columns: 0px 1fr var(--right-width); }
+      .app.right-collapsed { grid-template-columns: var(--left-width) 1fr 0px; }
+      .app.left-collapsed.right-collapsed { grid-template-columns: 0px 1fr 0px; }
+
+      .sidebar {
+        background: var(--sidebar-bg);
+        color: var(--sidebar-text);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: opacity var(--transition);
+      }
+      .sidebar.left { border-right: 1px solid var(--sidebar-border); box-shadow: 1px 0 8px rgba(0,0,0,0.04); }
+      .sidebar.right { border-left: 1px solid var(--sidebar-border); box-shadow: -1px 0 8px rgba(0,0,0,0.04); }
+      .app.left-collapsed .sidebar.left,
+      .app.right-collapsed .sidebar.right {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--sidebar-border);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--sidebar-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 52px;
+      }
+
+      .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+      .sidebar-content::-webkit-scrollbar { width: 4px; }
+      .sidebar-content::-webkit-scrollbar-track { background: transparent; }
+      .sidebar-content::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 2px; }
+
+      .sidebar-container {
+        margin-bottom: 4px;
+        border-radius: 10px;
+        background: var(--sidebar-surface);
+        border: 1px solid var(--sidebar-border);
+        overflow: hidden;
+        transition: box-shadow 180ms ease;
+      }
+      .sidebar-container:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+      .sidebar-container-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 150ms ease;
+      }
+      .sidebar-container-header:hover { background: rgba(0,0,0,0.025); }
+
+      .sidebar-container-chevron {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        transition: transform 200ms ease;
+        color: var(--sidebar-muted);
+      }
+      .sidebar-container.collapsed .sidebar-container-chevron {
+        transform: rotate(-90deg);
+      }
+
+      .sidebar-container-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--sidebar-muted);
+        flex: 1;
+      }
+
+      .sidebar-container-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--sidebar-accent);
+        background: rgba(74, 124, 222, 0.1);
+        padding: 1px 7px;
+        border-radius: 99px;
+        min-width: 20px;
+        text-align: center;
+      }
+
+      .sidebar-container-body {
+        padding: 0 12px 10px;
+        display: grid;
+        grid-template-rows: 1fr;
+        transition: grid-template-rows 250ms ease, padding 250ms ease, opacity 200ms ease;
+        opacity: 1;
+      }
+      .sidebar-container.collapsed .sidebar-container-body {
+        grid-template-rows: 0fr;
+        padding: 0 12px;
+        opacity: 0;
+      }
+      .sidebar-container-body-inner {
+        overflow: hidden;
+      }
+
+      .sidebar-section { margin-bottom: 0; }
+      .sidebar-section-title {
+        display: none;
+      }
+
+      .file-card {
+        background: var(--sidebar-surface);
+        border: 1px solid var(--sidebar-border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        cursor: default;
+        transition: border-color 150ms ease, background 150ms ease;
+      }
+      .file-card:hover { border-color: var(--sidebar-accent); }
+      .file-card.active {
+        border-color: var(--sidebar-accent);
+        background: rgba(74, 124, 222, 0.08);
+      }
+      .file-card.clickable { cursor: pointer; }
+      .file-card { position: relative; }
+      .session-delete-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: none;
+        border: none;
+        color: var(--sidebar-muted);
+        cursor: pointer;
+        font-size: 0.8rem;
+        line-height: 1;
+        padding: 2px 5px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 150ms ease, color 150ms ease, background 150ms ease;
+      }
+      .file-card:hover .session-delete-btn { opacity: 1; }
+      .session-delete-btn:hover {
+        color: #d93025;
+        background: rgba(217, 48, 37, 0.08);
+      }
+      .file-card-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--sidebar-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .file-card-path {
+        font-size: 0.72rem;
+        color: var(--sidebar-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+      }
+
+      .empty-hint {
+        font-size: 0.78rem;
+        color: var(--sidebar-muted);
+        padding: 8px 4px;
+        font-style: italic;
+      }
+
+      .add-path-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .add-path-row input,
+      .add-path-row select {
+        flex: 1;
+        background: var(--sidebar-surface);
+        border: 1px solid var(--sidebar-border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        color: var(--sidebar-text);
+        font-size: 0.8rem;
+        outline: none;
+        transition: border-color 150ms ease;
+      }
+      .add-path-row input::placeholder { color: var(--sidebar-muted); }
+      .add-path-row input:focus,
+      .add-path-row select:focus { border-color: var(--sidebar-accent); }
+      .add-path-row button {
+        background: var(--sidebar-accent);
+        border: none;
+        border-radius: 6px;
+        color: #ffffff;
+        padding: 0 10px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        flex-shrink: 0;
+        transition: opacity 150ms ease;
+      }
+      .add-path-row button:hover { opacity: 0.85; }
+      .add-path-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .filter-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .filter-row input[type="checkbox"] {
+        accent-color: var(--sidebar-accent);
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+      .filter-meta {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .session-info {
+        padding: 12px 16px;
+        border-top: 1px solid var(--sidebar-border);
+        font-size: 0.72rem;
+        color: var(--sidebar-muted);
+      }
+      .session-info .session-id {
+        font-family: "SF Mono", "Fira Code", monospace;
+        color: var(--sidebar-accent);
+        font-size: 0.7rem;
+        font-weight: 500;
+      }
+      .session-info .config-line { margin-top: 4px; }
+
+      .center {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: var(--center-bg);
+        overflow: hidden;
+      }
+
+      .center-header {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-light);
+        background: var(--center-bg);
+        min-height: 52px;
+        gap: 8px;
+      }
+      .toggle-btn {
+        background: none;
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        padding: 6px 8px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        transition: background 150ms ease, color 150ms ease;
+        line-height: 0;
+      }
+      .toggle-btn:hover { background: var(--center-surface); color: var(--text-primary); }
+      .toggle-btn.active { background: var(--user-bubble); color: var(--user-accent); border-color: var(--user-accent); }
+
+      .center-title-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: 0;
+      }
+      .center-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .title-edit-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 4px;
+        line-height: 0;
+        opacity: 0;
+        transition: opacity 150ms ease, background 150ms ease, color 150ms ease;
+        flex-shrink: 0;
+      }
+      .center-title-wrapper:hover .title-edit-btn { opacity: 1; }
+      .title-edit-btn:hover { background: var(--center-surface); color: var(--text-primary); }
+      .title-edit-input {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        background: var(--center-surface);
+        border: 1px solid var(--sidebar-accent);
+        border-radius: 6px;
+        padding: 2px 8px;
+        text-align: center;
+        outline: none;
+        width: 300px;
+        max-width: 60vw;
+      }
+
+      .chat-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-area::-webkit-scrollbar { width: 6px; }
+      .chat-area::-webkit-scrollbar-track { background: transparent; }
+      .chat-area::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+      .welcome {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+      }
+
+      /* Tour bubbles */
+      .tour-bubble {
+        position: fixed;
+        z-index: 1000;
+        background: #fffcf5;
+        border: 2px solid #e8a735;
+        border-radius: 10px;
+        padding: 16px 20px;
+        font-size: 0.88rem;
+        line-height: 1.55;
+        color: var(--text-primary);
+        max-width: 310px;
+        box-shadow: 0 6px 24px rgba(232, 167, 53, 0.22), 0 2px 8px rgba(0,0,0,0.08);
+        pointer-events: none;
+        animation: tour-enter 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                   tour-pulse 1.4s ease-in-out 0.5s infinite;
+      }
+      .tour-bubble .tour-b-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #c48a1a;
+        font-size: 0.92rem;
+      }
+      /* left-pointing nub (bubble sits right of target) */
+      .tour-bubble.point-left::before,
+      .tour-bubble.point-left::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        border-style: solid;
+      }
+      .tour-bubble.point-left::before {
+        left: -11px;
+        border-width: 8px 10px 8px 0;
+        border-color: transparent #e8a735 transparent transparent;
+      }
+      .tour-bubble.point-left::after {
+        left: -8px;
+        border-width: 7px 9px 7px 0;
+        border-color: transparent #fffcf5 transparent transparent;
+      }
+      /* up-pointing nub (bubble sits below target) */
+      .tour-bubble.point-up::before,
+      .tour-bubble.point-up::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        border-style: solid;
+      }
+      .tour-bubble.point-up::before {
+        top: -11px;
+        border-width: 0 8px 10px 8px;
+        border-color: transparent transparent #e8a735 transparent;
+      }
+      .tour-bubble.point-up::after {
+        top: -8px;
+        border-width: 0 7px 9px 7px;
+        border-color: transparent transparent #fffcf5 transparent;
+      }
+      /* down-pointing nub (bubble sits above target) */
+      .tour-bubble.point-down::before,
+      .tour-bubble.point-down::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        border-style: solid;
+      }
+      .tour-bubble.point-down::before {
+        bottom: -11px;
+        border-width: 10px 8px 0 8px;
+        border-color: #e8a735 transparent transparent transparent;
+      }
+      .tour-bubble.point-down::after {
+        bottom: -8px;
+        border-width: 9px 7px 0 7px;
+        border-color: #fffcf5 transparent transparent transparent;
+      }
+      @keyframes tour-enter {
+        0% { opacity: 0; transform: scale(0.7) translateY(8px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      @keyframes tour-pulse {
+        0%, 100% { box-shadow: 0 4px 12px rgba(232, 167, 53, 0.15), 0 2px 6px rgba(0,0,0,0.06); border-color: #e8a735; }
+        50% { box-shadow: 0 0 20px rgba(232, 135, 20, 0.55), 0 0 40px rgba(232, 135, 20, 0.25); border-color: #d47a0a; }
+      }
+
+      .messages-container { display: flex; flex-direction: column; gap: 12px; }
+
+      .msg {
+        max-width: 82%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        animation: msg-in 200ms ease-out;
+      }
+      @keyframes msg-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .msg.user {
+        align-self: flex-end;
+        background: var(--user-bubble);
+        color: var(--text-primary);
+        border-bottom-right-radius: 4px;
+      }
+      .msg.assistant {
+        align-self: flex-start;
+        background: var(--assistant-bubble);
+        color: var(--text-primary);
+        border-bottom-left-radius: 4px;
+      }
+      .msg.error {
+        align-self: center;
+        background: var(--error-bg);
+        color: var(--error-text);
+        font-size: 0.84rem;
+        border-radius: 8px;
+        max-width: 90%;
+      }
+      .msg .meta {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        margin-top: 6px;
+        opacity: 0.8;
+      }
+      .msg .msg-text { white-space: pre-wrap; word-break: break-word; }
+      .msg.assistant .msg-text {
+        white-space: normal;
+        line-height: 1.55;
+      }
+
+      /* — Paragraphs — */
+      .msg.assistant .msg-text p { margin: 0 0 0.55em; }
+      .msg.assistant .msg-text p:last-child { margin-bottom: 0; }
+
+      /* — Lists — */
+      .msg.assistant .msg-text ul,
+      .msg.assistant .msg-text ol {
+        margin: 0.25em 0 0.55em 1.5em;
+        padding: 0;
+      }
+      .msg.assistant .msg-text li { margin-bottom: 0.15em; }
+      .msg.assistant .msg-text li > p { margin-bottom: 0.2em; }
+
+      /* — Headings — */
+      .msg.assistant .msg-text h1,
+      .msg.assistant .msg-text h2,
+      .msg.assistant .msg-text h3,
+      .msg.assistant .msg-text h4 {
+        margin: 0.75em 0 0.3em;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+      }
+      .msg.assistant .msg-text h1 { font-size: 1.18em; }
+      .msg.assistant .msg-text h2 { font-size: 1.08em; }
+      .msg.assistant .msg-text h3 { font-size: 1em; }
+      .msg.assistant .msg-text h4 { font-size: 0.92em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+      .msg.assistant .msg-text :first-child { margin-top: 0; }
+
+      /* — Inline code — */
+      .msg.assistant .msg-text code {
+        background: rgba(0, 0, 0, 0.055);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 0.12em 0.35em;
+        border-radius: 5px;
+        font-size: 0.86em;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      /* — Code blocks — */
+      .msg.assistant .msg-text pre {
+        background: #1e1e2e;
+        color: #cdd6f4;
+        padding: 14px 16px;
+        border-radius: 10px;
+        border: 1px solid #363650;
+        overflow-x: auto;
+        margin: 0.5em 0;
+        font-size: 0.84em;
+        line-height: 1.55;
+        -webkit-overflow-scrolling: touch;
+      }
+      .msg.assistant .msg-text pre code {
+        background: none;
+        border: none;
+        padding: 0;
+        border-radius: 0;
+        color: inherit;
+        font-size: inherit;
+      }
+
+      /* — Blockquote — */
+      .msg.assistant .msg-text blockquote {
+        border-left: 3px solid var(--sidebar-accent);
+        margin: 0.5em 0;
+        padding: 0.3em 0 0.3em 0.9em;
+        color: var(--text-secondary);
+        background: rgba(137, 180, 250, 0.04);
+        border-radius: 0 6px 6px 0;
+      }
+      .msg.assistant .msg-text blockquote p:last-child { margin-bottom: 0; }
+
+      /* — Table — */
+      .msg.assistant .msg-text table {
+        border-collapse: collapse;
+        margin: 0.5em 0;
+        font-size: 0.88em;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+      }
+      .msg.assistant .msg-text th,
+      .msg.assistant .msg-text td {
+        border: 1px solid var(--border-light);
+        padding: 6px 10px;
+        text-align: left;
+      }
+      .msg.assistant .msg-text th {
+        background: var(--center-surface);
+        font-weight: 600;
+        font-size: 0.92em;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+      .msg.assistant .msg-text tr:nth-child(even) td { background: rgba(0, 0, 0, 0.015); }
+
+      /* — Horizontal rule — */
+      .msg.assistant .msg-text hr {
+        border: none;
+        border-top: 1px solid var(--border-light);
+        margin: 0.7em 0;
+      }
+
+      /* — Links — */
+      .msg.assistant .msg-text a {
+        color: var(--user-accent);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: border-color 180ms ease;
+      }
+      .msg.assistant .msg-text a:hover {
+        border-bottom-color: var(--user-accent);
+      }
+
+      /* — Strong / emphasis — */
+      .msg.assistant .msg-text strong { font-weight: 650; }
+
+      /* — Inline artifact links under assistant messages — */
+      .msg-artifacts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .msg-artifact-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: rgba(74, 124, 222, 0.07);
+        border: 1px solid rgba(74, 124, 222, 0.25);
+        border-radius: 6px;
+        font-size: 0.78rem;
+        color: var(--user-accent);
+        cursor: pointer;
+        transition: background 150ms ease, border-color 150ms ease;
+        max-width: 320px;
+      }
+      .msg-artifact-chip:hover {
+        background: rgba(74, 124, 222, 0.14);
+        border-color: var(--user-accent);
+      }
+      .msg-artifact-chip-icon {
+        flex-shrink: 0;
+        font-size: 0.82rem;
+        opacity: 0.8;
+        line-height: 0;
+      }
+
+      /* File type icon badges */
+      .file-type-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: 800;
+        color: #fff;
+        flex-shrink: 0;
+        letter-spacing: -0.02em;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .file-type-icon.docx { background: #2b579a; }
+      .file-type-icon.xlsx { background: #217346; }
+      .file-type-icon.pdf  { background: #d42b1e; }
+      .file-type-icon.pptx { background: #d24726; }
+      .file-type-icon.txt  { background: #6b7280; }
+      .file-type-icon.generic { background: #8a8fa4; }
+      .file-type-icon.lg {
+        width: 32px;
+        height: 32px;
+        font-size: 0.78rem;
+        border-radius: 5px;
+      }
+      .file-type-icon.sm {
+        width: 18px;
+        height: 18px;
+        font-size: 0.52rem;
+        border-radius: 3px;
+      }
+      .msg-artifact-chip-name {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
+      }
+
+      /* — Plan card markdown inlines — */
+      .report-plan-summary p,
+      .report-plan-instructions p { margin: 0 0 0.3em; }
+      .report-plan-summary p:last-child,
+      .report-plan-instructions p:last-child { margin-bottom: 0; }
+
+      .report-plan-card {
+        margin-top: 10px;
+        background: var(--center-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .report-plan-card.readonly { opacity: 0.9; }
+      .report-plan-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .report-plan-title {
+        font-size: 0.88rem;
+        font-weight: 700;
+      }
+      .report-plan-summary {
+        margin-top: 6px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+      .report-plan-status {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-radius: 999px;
+        padding: 2px 8px;
+        white-space: nowrap;
+      }
+      .report-plan-status.status-pending {
+        color: #b45309; background: #fef3c7; border: 1px solid #fcd34d;
+      }
+      .report-plan-status.status-generated,
+      .report-plan-status.status-completed {
+        color: #047857; background: #d1fae5; border: 1px solid #6ee7b7;
+      }
+      .report-plan-status.status-ready {
+        color: #1d4ed8; background: #dbeafe; border: 1px solid #93c5fd;
+      }
+      .report-plan-status.status-default {
+        color: var(--text-secondary); background: var(--center-surface); border: 1px solid var(--border-light);
+      }
+      .report-plan-readonly {
+        margin-top: 8px;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+      }
+      .report-plan-sections {
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .report-plan-section {
+        border: 1px solid rgba(112, 173, 71, 0.25);
+        border-radius: 8px;
+        padding: 4px 6px;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      .report-plan-section-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 24px;
+      }
+      .report-plan-section-title {
+        font-size: 0.78rem;
+        font-weight: 600;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .report-plan-section-meta {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .report-plan-section-status {
+        font-size: 0.64rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-radius: 999px;
+        padding: 1px 7px;
+        white-space: nowrap;
+      }
+      .report-plan-section-status.status-pending {
+        color: #b45309;
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+      }
+      .report-plan-section-status.status-generated {
+        color: #047857;
+        background: #d1fae5;
+        border: 1px solid #6ee7b7;
+      }
+      .report-plan-section-status.status-default {
+        color: var(--text-secondary);
+        background: var(--center-surface);
+        border: 1px solid var(--border-light);
+      }
+      .report-plan-btn-row {
+        display: flex;
+        gap: 2px;
+      }
+      .report-plan-btn {
+        border: 1px solid var(--border-light);
+        background: var(--center-surface);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-size: 0.72rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .report-plan-btn:hover { border-color: var(--sidebar-accent); color: var(--text-primary); }
+      .report-plan-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .report-plan-btn.primary {
+        background: var(--user-accent);
+        border-color: var(--user-accent);
+        color: #fff;
+        font-weight: 600;
+        padding: 2px 8px;
+      }
+      .report-plan-btn.icon-btn {
+        padding: 2px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .report-plan-btn.icon-btn svg { width: 12px; height: 12px; }
+      .report-plan-btn.icon-btn.remove-btn:hover { border-color: #ef4444; color: #ef4444; }
+      .report-plan-instructions {
+        margin-top: 2px;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .report-plan-instructions p { display: inline; margin: 0; }
+      .report-plan-subsections {
+        margin-top: 2px;
+        margin-left: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .report-plan-footer {
+        margin-top: 6px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      /* ── Report Plan Bar (persistent, between chat and input) ── */
+      #reportPlanBar {
+        border-top: 2px solid #70ad47;
+        background: rgba(112, 173, 71, 0.06);
+        flex-shrink: 0;
+        overflow: hidden;
+      }
+      #reportPlanBar.hidden { display: none; }
+
+      .plan-bar-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .plan-bar-header:hover { background: rgba(112, 173, 71, 0.10); }
+
+      .plan-bar-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #5a9339;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .plan-bar-header-controls {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+      }
+      .plan-bar-start-btn {
+        padding: 3px 12px !important;
+        font-size: 0.74rem !important;
+        margin-left: 4px;
+      }
+
+      .plan-bar-chevron {
+        width: 18px;
+        height: 18px;
+        color: #70ad47;
+        transition: transform 200ms ease;
+        flex-shrink: 0;
+      }
+      #reportPlanBar.expanded .plan-bar-chevron { transform: rotate(180deg); }
+
+      .plan-bar-body {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 250ms ease;
+      }
+      #reportPlanBar.expanded .plan-bar-body {
+        grid-template-rows: 1fr;
+      }
+      .plan-bar-body-inner {
+        overflow: hidden;
+        padding: 0 16px;
+      }
+      #reportPlanBar.expanded .plan-bar-body-inner {
+        padding-bottom: 6px;
+      }
+      .plan-bar-body-inner .report-plan-sections { margin-top: 0; }
+      .plan-bar-body-inner .report-plan-footer { margin-top: 4px; }
+      .plan-bar-body-inner .report-plan-summary { margin-top: 2px; margin-bottom: 4px; font-size: 0.75rem; }
+
+      .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        padding: 12px 18px;
+        background: var(--assistant-bubble);
+        border-radius: 16px;
+        border-bottom-left-radius: 4px;
+      }
+      .typing-indicator.visible { display: flex; }
+      .typing-indicator .dot {
+        width: 8px;
+        height: 8px;
+        background: #999;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: dot-bounce 1.4s infinite ease-in-out both;
+      }
+      .typing-indicator .dot:nth-child(1) { animation-delay: -0.32s; }
+      .typing-indicator .dot:nth-child(2) { animation-delay: -0.16s; }
+      @keyframes dot-bounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+      }
+
+      .input-area {
+        padding: 12px 16px 16px;
+        border-top: 1px solid var(--border-light);
+        background: var(--center-bg);
+      }
+      .input-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        background: var(--center-surface);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 8px 12px;
+        transition: border-color 150ms ease;
+      }
+      .input-row:focus-within { border-color: var(--user-accent); }
+      .filter-notice {
+        display: none;
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        padding: 0 4px 6px;
+        line-height: 1.4;
+      }
+      .filter-notice.visible { display: block; }
+      .filter-notice strong { color: var(--user-accent); font-weight: 600; }
+      .input-row textarea {
+        flex: 1;
+        border: none;
+        background: none;
+        resize: none;
+        font-family: inherit;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        outline: none;
+        max-height: 150px;
+        line-height: 1.5;
+        padding: 4px 0;
+        overflow-y: auto;
+      }
+      .input-row textarea::placeholder { color: var(--text-secondary); }
+      .send-btn {
+        background: var(--user-accent);
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: opacity 150ms ease, background 150ms ease;
+        line-height: 0;
+      }
+      .send-btn:hover { opacity: 0.85; }
+      .send-btn:disabled { opacity: 0.4; cursor: default; }
+
+      .config-btn {
+        background: none;
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+        line-height: 0;
+        position: relative;
+      }
+      .config-btn:hover { background: var(--center-surface); color: var(--text-primary); }
+      .config-btn.has-filters {
+        border-color: var(--user-accent);
+        color: var(--user-accent);
+        background: var(--user-bubble);
+      }
+      .config-btn-count {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: var(--user-accent);
+        color: #fff;
+        font-size: 0.6rem;
+        font-weight: 700;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .config-popover-anchor { position: relative; }
+      .config-popover {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        width: 320px;
+        background: var(--center-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+        z-index: 200;
+        overflow: hidden;
+        animation: popover-in 180ms ease-out;
+      }
+      .config-popover.open { display: block; }
+      @keyframes popover-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .config-popover-header {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .config-popover-title {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .config-popover-clear {
+        font-size: 0.72rem;
+        color: var(--user-accent);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: background 150ms ease;
+      }
+      .config-popover-clear:hover { background: var(--user-bubble); }
+      .config-popover-body {
+        max-height: 260px;
+        overflow-y: auto;
+        padding: 8px;
+      }
+      .config-popover-body::-webkit-scrollbar { width: 4px; }
+      .config-popover-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+      .config-popover-item {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 120ms ease;
+      }
+      .config-popover-item:hover { background: var(--center-surface); }
+      .config-popover-item input[type="checkbox"] {
+        accent-color: var(--user-accent);
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+      .config-popover-item-meta { flex: 1; min-width: 0; }
+      .config-popover-item-name {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .config-popover-item-desc {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .config-popover-empty {
+        padding: 12px 8px;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        font-style: italic;
+        text-align: center;
+      }
+
+      .doc-sub {
+        margin-bottom: 2px;
+        border-radius: 6px;
+        border: 1px solid var(--sidebar-border);
+        overflow: hidden;
+        border-left: 3px solid var(--sidebar-border);
+      }
+      /* Color-coded per document type */
+      .doc-sub[data-docsub="uploaded"]  { border-left-color: #5b9bd5; background: rgba(91, 155, 213, 0.06); }
+      .doc-sub[data-docsub="research"]  { border-left-color: #e8a735; background: rgba(232, 167, 53, 0.06); }
+      .doc-sub[data-docsub="reports"]   { border-left-color: #70ad47; background: rgba(112, 173, 71, 0.06); }
+      .doc-sub-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 120ms ease;
+      }
+      .doc-sub-header:hover { background: rgba(0,0,0,0.02); }
+      .doc-sub.disabled .doc-sub-header {
+        cursor: default;
+        opacity: 0.55;
+      }
+      .doc-sub.disabled .doc-sub-header:hover { background: none; }
+      .doc-sub-chevron {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        color: var(--sidebar-muted);
+        transition: transform 180ms ease;
+      }
+      .doc-sub.collapsed .doc-sub-chevron { transform: rotate(-90deg); }
+      .doc-sub-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--sidebar-muted);
+        flex: 1;
+      }
+      /* Color-coded labels per document type */
+      .doc-sub[data-docsub="uploaded"]  .doc-sub-label { color: #4a88c2; }
+      .doc-sub[data-docsub="research"]  .doc-sub-label { color: #c48a1a; }
+      .doc-sub[data-docsub="reports"]   .doc-sub-label { color: #5a9339; }
+      .doc-sub-count {
+        font-size: 0.62rem;
+        font-weight: 600;
+        color: var(--sidebar-muted);
+        background: var(--sidebar-bg);
+        padding: 0 6px;
+        border-radius: 99px;
+        min-width: 18px;
+        text-align: center;
+      }
+      .doc-sub-body {
+        display: grid;
+        grid-template-rows: 1fr;
+        transition: grid-template-rows 200ms ease, opacity 150ms ease;
+        opacity: 1;
+      }
+      .doc-sub.collapsed .doc-sub-body {
+        grid-template-rows: 0fr;
+        opacity: 0;
+      }
+      .doc-sub-body-inner {
+        overflow: hidden;
+        padding: 0 8px 6px;
+      }
+      .doc-sub-divider {
+        border: none;
+        border-top: 1px solid var(--sidebar-border);
+        margin: 6px 0;
+      }
+      .doc-upload-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        width: 100%;
+        padding: 6px 0;
+        margin-top: 4px;
+        background: none;
+        border: 1px dashed var(--sidebar-border);
+        border-radius: 6px;
+        color: var(--sidebar-muted);
+        font-size: 0.72rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+      }
+      .doc-upload-btn:hover {
+        border-color: var(--sidebar-accent);
+        color: var(--sidebar-accent);
+        background: rgba(74, 124, 222, 0.04);
+      }
+      .doc-upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .doc-upload-btn:disabled:hover { border-color: var(--sidebar-border); color: var(--sidebar-muted); background: none; }
+
+      .preview-empty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        color: var(--sidebar-muted);
+        font-size: 0.85rem;
+      }
+      .preview-frame {
+        flex: 1;
+        width: 100%;
+        border: none;
+        background: #fff;
+      }
+
+      @media (max-width: 1200px) {
+        .app { grid-template-columns: var(--left-width) 1fr 0px; }
+        .app .sidebar.right { opacity: 0; pointer-events: none; }
+        .app.right-open { grid-template-columns: var(--left-width) 1fr var(--right-width); }
+        .app.right-open .sidebar.right { opacity: 1; pointer-events: auto; }
+        .app.left-collapsed { grid-template-columns: 0px 1fr 0px; }
+        .app.left-collapsed.right-open { grid-template-columns: 0px 1fr var(--right-width); }
+      }
+
+      @media (max-width: 900px) {
+        .app { grid-template-columns: 0px 1fr 0px; }
+        .app .sidebar.left,
+        .app .sidebar.right { opacity: 0; pointer-events: none; }
+
+        .app.left-open { grid-template-columns: var(--left-width) 1fr 0px; }
+        .app.left-open .sidebar.left { opacity: 1; pointer-events: auto; }
+
+        .app.right-open { grid-template-columns: 0px 1fr var(--right-width); }
+        .app.right-open .sidebar.right { opacity: 1; pointer-events: auto; }
+
+        .app.left-open .sidebar.left,
+        .app.right-open .sidebar.right {
+          position: fixed;
+          top: 0;
+          bottom: 0;
+          z-index: 100;
+          width: var(--left-width);
+        }
+        .app.left-open .sidebar.left { left: 0; }
+        .app.right-open .sidebar.right { right: 0; width: min(520px, 80vw); }
+      }
+
+      /* ── Login Screen ── */
+      .login-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e8f0fe 0%, #f5f6f8 50%, #e0e7f1 100%);
+        transition: opacity 0.4s ease, visibility 0.4s ease;
+      }
+      .login-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .login-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+        padding: 40px 36px 32px;
+        width: 360px;
+        max-width: 90vw;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .login-brand {
+        text-align: center;
+      }
+      .login-brand-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+      }
+      .login-brand-sub {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      .login-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .login-field label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--sidebar-muted);
+      }
+      .login-field input {
+        background: var(--center-surface);
+        border: 1px solid var(--sidebar-border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: var(--sidebar-text);
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 150ms ease;
+      }
+      .login-field input::placeholder { color: var(--sidebar-muted); }
+      .login-field input:focus { border-color: var(--sidebar-accent); }
+      .login-submit {
+        background: var(--sidebar-accent);
+        border: none;
+        border-radius: 8px;
+        color: #ffffff;
+        padding: 11px 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 150ms ease;
+      }
+      .login-submit:hover { opacity: 0.85; }
+      .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+      .login-error {
+        font-size: 0.82rem;
+        color: var(--error-text);
+        background: var(--error-bg);
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: none;
+      }
+      .login-error.visible { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="loginScreen" class="login-screen">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-brand-title">Finance Assist</div>
+          <div class="login-brand-sub">Research &amp; Reporting</div>
+        </div>
+        <div class="login-field">
+          <label for="loginEmployeeId">Employee ID</label>
+          <input id="loginEmployeeId" type="text" maxlength="9" placeholder="9-digit employee ID" autocomplete="off" />
+        </div>
+        <div class="login-field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="Password" autocomplete="off" />
+        </div>
+        <div id="loginError" class="login-error"></div>
+        <button id="loginSubmitBtn" class="login-submit">Login</button>
+      </div>
+    </div>
+
+    <div id="app" class="app">
+      <aside class="sidebar left">
+        <div class="sidebar-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          Workspace
+        </div>
+        <div class="sidebar-content">
+          <div class="sidebar-container collapsed" id="container-sessions" data-container="sessions">
+            <div class="sidebar-container-header" onclick="toggleContainer('sessions')">
+              <svg class="sidebar-container-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="sidebar-container-title">Sessions</span>
+              <span class="sidebar-container-badge" id="badge-sessions" style="display:none;">0</span>
+            </div>
+            <div class="sidebar-container-body">
+              <div class="sidebar-container-body-inner">
+                <div class="sidebar-section">
+                  <div id="sessionsList"></div>
+                  <div id="sessionsEmpty" class="empty-hint">No sessions yet</div>
+                  <div class="add-path-row">
+                    <input id="newSessionTitle" type="text" placeholder="Optional session title" />
+                    <button id="createSessionBtn">New</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-container collapsed" id="container-documents" data-container="documents">
+            <div class="sidebar-container-header" onclick="toggleContainer('documents')">
+              <svg class="sidebar-container-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="sidebar-container-title">Documents</span>
+              <span class="sidebar-container-badge" id="badge-documents" style="display:none;">0</span>
+            </div>
+            <div class="sidebar-container-body">
+              <div class="sidebar-container-body-inner">
+                <div class="doc-sub collapsed disabled" id="doc-sub-research" data-docsub="research">
+                  <div class="doc-sub-header" onclick="toggleDocSub('research')">
+                    <svg class="doc-sub-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span class="doc-sub-label">Research</span>
+                    <span class="doc-sub-count" id="doc-sub-count-research">0</span>
+                  </div>
+                  <div class="doc-sub-body"><div class="doc-sub-body-inner">
+                    <div id="researchList"></div>
+                  </div></div>
+                </div>
+                <div class="doc-sub collapsed disabled" id="doc-sub-reports" data-docsub="reports">
+                  <div class="doc-sub-header" onclick="toggleDocSub('reports')">
+                    <svg class="doc-sub-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span class="doc-sub-label">Reports</span>
+                    <span class="doc-sub-count" id="doc-sub-count-reports">0</span>
+                  </div>
+                  <div class="doc-sub-body"><div class="doc-sub-body-inner">
+                    <div id="reportList"></div>
+                  </div></div>
+                </div>
+                <hr class="doc-sub-divider" />
+                <div class="doc-sub collapsed disabled" id="doc-sub-uploaded" data-docsub="uploaded">
+                  <div class="doc-sub-header" onclick="toggleDocSub('uploaded')">
+                    <svg class="doc-sub-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span class="doc-sub-label">Uploaded</span>
+                    <span class="doc-sub-count" id="doc-sub-count-uploaded">0</span>
+                  </div>
+                  <div class="doc-sub-body"><div class="doc-sub-body-inner">
+                    <div id="uploadedList"></div>
+                  </div></div>
+                </div>
+                <button id="uploadDocBtn" class="doc-upload-btn" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload Document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <main class="center">
+        <div class="center-header">
+          <button id="toggleLeft" class="toggle-btn active" title="Toggle workspace panel">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          </button>
+          <div class="center-title-wrapper">
+            <div id="centerTitle" class="center-title">Finance Assist</div>
+            <button id="titleEditBtn" class="title-edit-btn" title="Rename session" style="display:none;" onclick="startTitleEdit()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            </button>
+          </div>
+          <button id="toggleRight" class="toggle-btn" title="Toggle preview panel">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </button>
+        </div>
+
+        <div id="chatArea" class="chat-area">
+          <div id="welcome" class="welcome"></div>
+
+          <div id="messagesContainer" class="messages-container" style="display:none;"></div>
+
+          <div id="typingIndicator" class="typing-indicator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+
+        <div id="reportPlanBar" class="hidden">
+          <div class="plan-bar-header" id="planBarToggle">
+            <span class="plan-bar-title" id="planBarTitle">Report Plan</span>
+            <span class="report-plan-status" id="planBarStatus">scaffolding</span>
+            <span class="plan-bar-header-controls" id="planBarHeaderControls"></span>
+            <svg class="plan-bar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="plan-bar-body">
+            <div class="plan-bar-body-inner" id="planBarBodyInner"></div>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <div id="filterNotice" class="filter-notice"></div>
+          <div class="input-row">
+            <div class="config-popover-anchor">
+              <button id="configBtn" class="config-btn" title="Data source filters">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span id="configBtnCount" class="config-btn-count" style="display:none;">0</span>
+              </button>
+              <div id="configPopover" class="config-popover">
+                <div class="config-popover-header">
+                  <span class="config-popover-title">Data Source Filters</span>
+                  <div style="display:flex;gap:4px;">
+                    <button id="selectAllSourcesBtn" class="config-popover-clear">All</button>
+                    <button id="selectNoneSourcesBtn" class="config-popover-clear">None</button>
+                  </div>
+                </div>
+                <div class="config-popover-body">
+                  <div id="dataSourcesList"></div>
+                  <div id="dataSourcesEmpty" class="config-popover-empty">No enabled data sources found</div>
+                </div>
+              </div>
+            </div>
+            <textarea id="messageInput" rows="1" placeholder="Ask a research question or request a report..."></textarea>
+            <button id="sendBtn" class="send-btn" title="Send message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="sidebar right">
+        <div class="sidebar-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Artifact Preview
+        </div>
+        <div id="previewContent" class="sidebar-content" style="padding:0; flex:1; display:flex; flex-direction:column;">
+          <div id="previewEmpty" class="preview-empty">Select a document artifact to preview</div>
+          <iframe id="previewFrame" class="preview-frame" title="Artifact Preview" style="display:none;"></iframe>
+        </div>
+      </aside>
+
+      <!-- Tour bubbles (fixed-position, managed by JS) -->
+      <div id="tour-sessions" class="tour-bubble point-left" style="display:none;">
+        <div class="tour-b-title">Pick a Session</div>
+        Select an existing session to continue, or type a query below to start a new one.
+      </div>
+      <div id="tour-input" class="tour-bubble point-down" style="display:none;">
+        <div class="tour-b-title">Start Fresh</div>
+        Type a question here to automatically create a new session.
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      let currentUserId = sessionStorage.getItem("docxAgentUserId") || "";
+      let userSessions = [];
+      let currentSessionId = null;
+      let currentSession = null;
+      let currentMessages = [];
+      let artifactPanes = {
+        uploaded_documents: [],
+        research_outputs: [],
+        report_documents: [],
+      };
+      let activePreviewArtifactId = null;
+      let dataSourceCatalog = [];
+      let selectedSourceFilters = new Set();
+      let processing = false;
+      let currentReportPlanState = null;
+      let planBarExpanded = true;
+
+      const appEl = document.getElementById("app");
+      const toggleLeftBtn = document.getElementById("toggleLeft");
+      const toggleRightBtn = document.getElementById("toggleRight");
+      const messageInput = document.getElementById("messageInput");
+      let leftOpen = true;
+      let rightOpen = false;
+
+      document.getElementById("planBarToggle").addEventListener("click", () => {
+        planBarExpanded = !planBarExpanded;
+        const bar = document.getElementById("reportPlanBar");
+        bar.className = planBarExpanded ? "expanded" : "";
+      });
+
+      async function api(method, path, body = null) {
+        const options = { method, headers: {} };
+        if (body !== null) {
+          options.headers["Content-Type"] = "application/json";
+          options.body = JSON.stringify(body);
+        }
+        const response = await fetch(path, options);
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (_) {
+          payload = { status: "error", error_code: "INVALID_RESPONSE", message: "non-JSON response" };
+        }
+        if (!response.ok && payload && payload.status !== "error") {
+          payload.status = "error";
+          payload.error_code = payload.error_code || "HTTP_ERROR";
+          payload.message = payload.message || `HTTP ${response.status}`;
+        }
+        return payload;
+      }
+
+      function applyLayout() {
+        const width = window.innerWidth;
+        appEl.className = "app";
+
+        if (width <= 900) {
+          if (leftOpen) appEl.classList.add("left-open");
+          if (rightOpen) appEl.classList.add("right-open");
+        } else if (width <= 1200) {
+          if (!leftOpen) appEl.classList.add("left-collapsed");
+          if (rightOpen) appEl.classList.add("right-open");
+        } else {
+          if (!leftOpen) appEl.classList.add("left-collapsed");
+          if (!rightOpen) appEl.classList.add("right-collapsed");
+        }
+
+        toggleLeftBtn.classList.toggle("active", leftOpen);
+        toggleRightBtn.classList.toggle("active", rightOpen);
+      }
+
+      toggleLeftBtn.onclick = () => {
+        leftOpen = !leftOpen;
+        applyLayout();
+        setTimeout(renderWelcome, 220);
+      };
+      toggleRightBtn.onclick = () => {
+        rightOpen = !rightOpen;
+        applyLayout();
+        setTimeout(renderWelcome, 220);
+      };
+      window.addEventListener("resize", () => { applyLayout(); renderWelcome(); });
+
+      messageInput.addEventListener("input", () => {
+        messageInput.style.height = "auto";
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + "px";
+      });
+      messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+
+      function isFiltered() {
+        return dataSourceCatalog.length > 0 && selectedSourceFilters.size < dataSourceCatalog.length;
+      }
+
+      function updateFooterMeta() {
+        updateContainerBadges();
+        updateFilterNotice();
+      }
+
+      function setControlsDisabled() {
+        document.getElementById("createSessionBtn").disabled = !currentUserId;
+        document.getElementById("uploadDocBtn").disabled = !currentSessionId;
+        // Enable send when logged in — sendMessage() auto-creates a session if needed
+        document.getElementById("sendBtn").disabled = processing || !currentUserId;
+      }
+
+      function toggleContainer(name) {
+        const el = document.getElementById(`container-${name}`);
+        if (el) el.classList.toggle("collapsed");
+      }
+
+      function setContainerCollapsed(name, collapsed) {
+        const el = document.getElementById(`container-${name}`);
+        if (!el) return;
+        el.classList.toggle("collapsed", collapsed);
+      }
+
+      function updateContainerStates() {
+        const hasSession = Boolean(currentSessionId);
+        setContainerCollapsed("sessions", hasSession);
+        setContainerCollapsed("documents", !hasSession);
+      }
+
+      function toggleDocSub(name) {
+        const el = document.getElementById(`doc-sub-${name}`);
+        if (!el || el.classList.contains("disabled")) return;
+        el.classList.toggle("collapsed");
+      }
+
+      function updateDocSubStates() {
+        const counts = {
+          uploaded: (artifactPanes.uploaded_documents || []).length,
+          research: (artifactPanes.research_outputs || []).length,
+          reports: (artifactPanes.report_documents || []).length,
+        };
+        for (const [key, count] of Object.entries(counts)) {
+          const el = document.getElementById(`doc-sub-${key}`);
+          const countEl = document.getElementById(`doc-sub-count-${key}`);
+          if (!el || !countEl) continue;
+          countEl.textContent = count;
+          if (count > 0) {
+            el.classList.remove("disabled");
+          } else {
+            el.classList.add("disabled", "collapsed");
+          }
+        }
+      }
+
+      function updateContainerBadges() {
+        const docCount =
+          (artifactPanes.uploaded_documents || []).length +
+          (artifactPanes.research_outputs || []).length +
+          (artifactPanes.report_documents || []).length;
+        const badges = {
+          sessions: userSessions.length,
+          documents: docCount,
+        };
+        for (const [key, count] of Object.entries(badges)) {
+          const badge = document.getElementById(`badge-${key}`);
+          if (!badge) continue;
+          if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = "";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+        // Config button — highlight when not all sources selected
+        const countEl = document.getElementById("configBtnCount");
+        const btn = document.getElementById("configBtn");
+        const filtered = isFiltered();
+        if (filtered) {
+          countEl.textContent = selectedSourceFilters.size;
+          countEl.style.display = "";
+          btn.classList.add("has-filters");
+        } else {
+          countEl.style.display = "none";
+          btn.classList.remove("has-filters");
+        }
+      }
+
+      function updateFilterNotice() {
+        const el = document.getElementById("filterNotice");
+        if (!isFiltered() || selectedSourceFilters.size === 0) {
+          el.classList.remove("visible");
+          el.innerHTML = "";
+          return;
+        }
+        const names = dataSourceCatalog
+          .filter((s) => selectedSourceFilters.has(s.source_id))
+          .map((s) => s.name || s.source_id);
+        el.innerHTML = `Researching <strong>${names.join("</strong>, <strong>")}</strong> only`;
+        el.classList.add("visible");
+      }
+
+      function showTyping(show) {
+        document.getElementById("typingIndicator").classList.toggle("visible", show);
+        if (show) scrollChatToBottom();
+      }
+
+      function scrollChatToBottom() {
+        const chatArea = document.getElementById("chatArea");
+        requestAnimationFrame(() => {
+          chatArea.scrollTop = chatArea.scrollHeight;
+        });
+      }
+
+      function formatDate(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleString();
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      // Configure marked for safe markdown rendering
+      (function configureMarked() {
+        if (typeof marked === "undefined") return;
+        const renderer = new marked.Renderer();
+        // Prevent raw HTML injection from LLM output
+        renderer.html = function (html) {
+          const raw = typeof html === "string" ? html : (html && html.text) || "";
+          return escapeHtml(raw);
+        };
+        marked.setOptions({
+          breaks: true,
+          gfm: true,
+          renderer: renderer,
+        });
+      })();
+
+      function renderMarkdown(text) {
+        const raw = String(text || "");
+        if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+          try {
+            return marked.parse(raw);
+          } catch (_) {
+            return escapeHtml(raw);
+          }
+        }
+        return escapeHtml(raw);
+      }
+
+      function cloneJson(value) {
+        if (value === null || value === undefined) return null;
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function nowIso() {
+        return new Date().toISOString();
+      }
+
+      function randomId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+        return `id-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+      }
+
+      function latestReportPlanCard(messages) {
+        if (!Array.isArray(messages)) return null;
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          const msg = messages[i] || {};
+          if (msg.role !== "assistant") continue;
+          const card = msg.content_json && msg.content_json.report_plan_card;
+          if (card && typeof card === "object") return card;
+        }
+        return null;
+      }
+
+      function walkPlanSections(sections, visit) {
+        if (!Array.isArray(sections)) return;
+        for (const section of sections) {
+          if (!section || typeof section !== "object") continue;
+          visit(section);
+          walkPlanSections(section.subsections || [], visit);
+        }
+      }
+
+      function findSectionById(sections, sectionId) {
+        if (!Array.isArray(sections) || !sectionId) return null;
+        for (const section of sections) {
+          if (!section || typeof section !== "object") continue;
+          if (section.section_id === sectionId) return section;
+          const nested = findSectionById(section.subsections || [], sectionId);
+          if (nested) return nested;
+        }
+        return null;
+      }
+
+      function removeSectionById(sections, sectionId) {
+        if (!Array.isArray(sections) || !sectionId) return false;
+        const index = sections.findIndex((item) => item && item.section_id === sectionId);
+        if (index >= 0) {
+          sections.splice(index, 1);
+          return true;
+        }
+        for (const section of sections) {
+          if (!section || typeof section !== "object") continue;
+          const removed = removeSectionById(section.subsections || [], sectionId);
+          if (removed) return true;
+        }
+        return false;
+      }
+
+      function normalizePlanDepths(sections, depth = 0) {
+        if (!Array.isArray(sections)) return;
+        for (const section of sections) {
+          if (!section || typeof section !== "object") continue;
+          section.depth = depth;
+          if (!Array.isArray(section.subsections)) section.subsections = [];
+          normalizePlanDepths(section.subsections, depth + 1);
+        }
+      }
+
+      function recomputePlanSectionStatuses(planState) {
+        if (!planState || typeof planState !== "object") return;
+        const planStatus = String(planState.status || "scaffolding");
+        walkPlanSections(planState.sections || [], (section) => {
+          if (planStatus === "completed") {
+            section.status = "generated";
+            return;
+          }
+          const hasInstructions = Boolean(String(section.instructions || "").trim());
+          section.status = hasInstructions ? "has_instructions" : "pending";
+        });
+      }
+
+      function touchPlanState(updatedBy = "user") {
+        if (!currentReportPlanState || typeof currentReportPlanState !== "object") return;
+        currentReportPlanState.updated_by = updatedBy;
+        currentReportPlanState.updated_at = nowIso();
+        normalizePlanDepths(currentReportPlanState.sections || [], 0);
+        recomputePlanSectionStatuses(currentReportPlanState);
+      }
+
+      function applyCurrentPlanStateToLatestMessage() {
+        if (!currentReportPlanState || !Array.isArray(currentMessages)) return;
+        for (let i = currentMessages.length - 1; i >= 0; i -= 1) {
+          const msg = currentMessages[i] || {};
+          if (msg.role !== "assistant") continue;
+          if (!msg.content_json || !msg.content_json.report_plan_card) continue;
+          msg.content_json.report_plan_card = cloneJson(currentReportPlanState);
+          break;
+        }
+      }
+
+      function addChatNotice(text, isError = false) {
+        const container = document.getElementById("messagesContainer");
+        const welcome = document.getElementById("welcome");
+        welcome.style.display = "none";
+        container.style.display = "flex";
+
+        const div = document.createElement("div");
+        div.className = "msg " + (isError ? "error" : "assistant");
+        div.textContent = text;
+        container.appendChild(div);
+        scrollChatToBottom();
+      }
+
+      function appendLocalMessage(role, text) {
+        const container = document.getElementById("messagesContainer");
+        const welcome = document.getElementById("welcome");
+        welcome.style.display = "none";
+        container.style.display = "flex";
+
+        const div = document.createElement("div");
+        div.className = "msg " + role;
+        div.textContent = text;
+        container.appendChild(div);
+        scrollChatToBottom();
+      }
+
+      function renderUserStatus() {
+        // Login status is shown on the login screen; no sidebar element needed
+      }
+
+      function renderSessions() {
+        const list = document.getElementById("sessionsList");
+        const empty = document.getElementById("sessionsEmpty");
+        list.innerHTML = "";
+
+        if (!currentUserId || userSessions.length === 0) {
+          empty.style.display = "";
+          return;
+        }
+        empty.style.display = "none";
+
+        for (const session of userSessions) {
+          const card = document.createElement("div");
+          card.className = "file-card clickable" + (session.session_id === currentSessionId ? " active" : "");
+          card.onclick = async () => {
+            await hydrateSession(session.session_id);
+          };
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "session-delete-btn";
+          deleteBtn.textContent = "\u00d7";
+          deleteBtn.title = "Delete session";
+          deleteBtn.onclick = (event) => {
+            event.stopPropagation();
+            deleteSession(session.session_id);
+          };
+          card.appendChild(deleteBtn);
+
+          const name = document.createElement("div");
+          name.className = "file-card-name";
+          name.textContent = session.title || `Session ${session.session_id.slice(0, 8)}`;
+          card.appendChild(name);
+
+          const details = document.createElement("div");
+          details.className = "file-card-path";
+          details.textContent = `${session.status || "active"} | ${formatDate(session.updated_at)}`;
+          card.appendChild(details);
+
+          list.appendChild(card);
+        }
+      }
+
+      async function deleteSession(sessionId) {
+        try {
+          await api("POST", `/api/v2/sessions/${sessionId}/delete`);
+        } catch (e) {
+          addChatNotice(`Failed to delete session: ${e.message}`, true);
+          return;
+        }
+        if (sessionId === currentSessionId) {
+          currentSessionId = "";
+          currentMessages = [];
+          currentArtifactPanes = null;
+          currentReportPlanState = null;
+          render();
+        }
+        await loadUserSessions({ openMostRecent: false });
+      }
+
+      async function renameSession(sessionId, title) {
+        try {
+          const result = await api("POST", `/api/v2/sessions/${sessionId}/rename`, { title });
+          if (result.status !== "ok") {
+            addChatNotice(`Failed to rename session: ${result.message || "unknown error"}`, true);
+            return;
+          }
+        } catch (e) {
+          addChatNotice(`Failed to rename session: ${e.message}`, true);
+          return;
+        }
+        await hydrateSession(sessionId);
+        await loadUserSessions({ openMostRecent: false });
+      }
+
+      function startTitleEdit() {
+        if (!currentSessionId) return;
+        const wrapper = document.querySelector(".center-title-wrapper");
+        const titleEl = document.getElementById("centerTitle");
+        const editBtn = document.getElementById("titleEditBtn");
+        const currentText = titleEl.textContent;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "title-edit-input";
+        input.value = currentText;
+
+        titleEl.style.display = "none";
+        editBtn.style.display = "none";
+        wrapper.insertBefore(input, editBtn);
+        input.focus();
+        input.select();
+
+        function commitEdit() {
+          const newTitle = input.value.trim();
+          cleanup();
+          if (newTitle && newTitle !== currentText) {
+            renameSession(currentSessionId, newTitle);
+          }
+        }
+
+        function cancelEdit() {
+          cleanup();
+        }
+
+        function cleanup() {
+          if (input.parentNode) input.remove();
+          titleEl.style.display = "";
+          editBtn.style.display = "";
+        }
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+          if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+        });
+        input.addEventListener("blur", commitEdit);
+      }
+
+      function renderDataSources() {
+        const list = document.getElementById("dataSourcesList");
+        const empty = document.getElementById("dataSourcesEmpty");
+        list.innerHTML = "";
+
+        if (dataSourceCatalog.length === 0) {
+          empty.style.display = "";
+          return;
+        }
+        empty.style.display = "none";
+
+        for (const source of dataSourceCatalog) {
+          const item = document.createElement("label");
+          item.className = "config-popover-item";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = selectedSourceFilters.has(source.source_id);
+          checkbox.onchange = (event) => {
+            if (event.target.checked) selectedSourceFilters.add(source.source_id);
+            else selectedSourceFilters.delete(source.source_id);
+            updateFooterMeta();
+          };
+          item.appendChild(checkbox);
+
+          const meta = document.createElement("div");
+          meta.className = "config-popover-item-meta";
+          const name = document.createElement("div");
+          name.className = "config-popover-item-name";
+          name.textContent = source.name || source.source_id;
+          const desc = document.createElement("div");
+          desc.className = "config-popover-item-desc";
+          desc.textContent = `${source.source_id} | ${source.source_type}`;
+          meta.appendChild(name);
+          meta.appendChild(desc);
+          item.appendChild(meta);
+
+          list.appendChild(item);
+        }
+      }
+
+      function renderArtifactList(containerId, artifacts) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = "";
+
+        if (!artifacts || artifacts.length === 0) return;
+
+        for (const artifact of artifacts) {
+          const card = document.createElement("div");
+          const isActive = artifact.artifact_id === activePreviewArtifactId;
+          card.className = "file-card clickable" + (isActive ? " active" : "");
+          card.onclick = async () => {
+            activePreviewArtifactId = artifact.artifact_id;
+            await loadArtifactPreview(artifact.artifact_id);
+            renderArtifactPanes();
+            rightOpen = true;
+            applyLayout();
+          };
+
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;align-items:center;gap:8px;";
+
+          row.appendChild(createFileTypeIcon(artifact.filename, false));
+
+          const meta = document.createElement("div");
+          meta.style.cssText = "min-width:0;flex:1;";
+          const name = document.createElement("div");
+          name.className = "file-card-name";
+          name.textContent = artifact.filename || artifact.artifact_id;
+          meta.appendChild(name);
+
+          const path = document.createElement("div");
+          path.className = "file-card-path";
+          path.textContent = `${artifact.artifact_type} | ${formatDate(artifact.created_at)}`;
+          meta.appendChild(path);
+
+          row.appendChild(meta);
+          card.appendChild(row);
+
+          container.appendChild(card);
+        }
+      }
+
+      function renderArtifactPanes() {
+        renderArtifactList("uploadedList", artifactPanes.uploaded_documents || []);
+        renderArtifactList("researchList", artifactPanes.research_outputs || []);
+        renderArtifactList("reportList", artifactPanes.report_documents || []);
+        updateDocSubStates();
+      }
+
+      function createPlanSectionNode(title, depth) {
+        return {
+          section_id: randomId(),
+          title,
+          depth,
+          instructions: null,
+          instruction_source: null,
+          status: "pending",
+          subsections: [],
+        };
+      }
+
+      function handlePlanCardAction(action, data = {}) {
+        if (processing || !currentReportPlanState) return;
+        const plan = currentReportPlanState;
+        if (!Array.isArray(plan.sections)) plan.sections = [];
+
+        if (action === "start_now") {
+          plan.status = "ready";
+          touchPlanState("user");
+          applyCurrentPlanStateToLatestMessage();
+          renderReportPlanBar();
+          sendRespondRequest({ messageText: "", reportPlanAction: "start_now" });
+          return;
+        }
+
+        if (action === "edit_title") {
+          const nextTitle = window.prompt("Report title", plan.title || "");
+          if (!nextTitle || !nextTitle.trim()) return;
+          plan.title = nextTitle.trim();
+        } else if (action === "add_section") {
+          const sectionTitle = window.prompt("New section title");
+          if (!sectionTitle || !sectionTitle.trim()) return;
+          plan.sections.push(createPlanSectionNode(sectionTitle.trim(), 0));
+        } else if (action === "add_subsection") {
+          const parentId = data.section_id;
+          const parent = findSectionById(plan.sections, parentId);
+          if (!parent) return;
+          const subTitle = window.prompt(`Add subsection under "${parent.title}"`);
+          if (!subTitle || !subTitle.trim()) return;
+          if (!Array.isArray(parent.subsections)) parent.subsections = [];
+          parent.subsections.push(createPlanSectionNode(subTitle.trim(), Number(parent.depth || 0) + 1));
+        } else if (action === "edit_instructions") {
+          const section = findSectionById(plan.sections, data.section_id);
+          if (!section) return;
+          const nextInstructions = window.prompt(
+            `Instructions for "${section.title}"`,
+            section.instructions || ""
+          );
+          if (nextInstructions === null) return;
+          const clean = nextInstructions.trim();
+          section.instructions = clean || null;
+          section.instruction_source = clean ? "user" : null;
+        } else if (action === "remove_section") {
+          const target = findSectionById(plan.sections, data.section_id);
+          if (!target) return;
+          const confirmed = window.confirm(`Remove "${target.title}" and its subsections?`);
+          if (!confirmed) return;
+          removeSectionById(plan.sections, data.section_id);
+        } else {
+          return;
+        }
+
+        plan.status = plan.status === "completed" ? "completed" : "scaffolding";
+        touchPlanState("user");
+        applyCurrentPlanStateToLatestMessage();
+        renderReportPlanBar();
+      }
+
+      function renderPlanSection(section, isLatest) {
+        const card = document.createElement("div");
+        card.className = "report-plan-section";
+
+        const row = document.createElement("div");
+        row.className = "report-plan-section-row";
+
+        const left = document.createElement("div");
+        left.className = "report-plan-section-title";
+        left.textContent = section.title || "Untitled Section";
+        row.appendChild(left);
+
+        const right = document.createElement("div");
+        right.className = "report-plan-section-meta";
+
+        const sectionStatus = (section.status || "pending").toLowerCase();
+        const status = document.createElement("span");
+        const statusClass = sectionStatus === "pending" ? "status-pending"
+          : sectionStatus === "generated" ? "status-generated" : "status-default";
+        status.className = "report-plan-section-status " + statusClass;
+        status.textContent = sectionStatus;
+        right.appendChild(status);
+
+        if (isLatest) {
+          const controls = document.createElement("div");
+          controls.className = "report-plan-btn-row";
+
+          const addSub = document.createElement("button");
+          addSub.className = "report-plan-btn";
+          addSub.textContent = "+ Sub";
+          addSub.title = "Add subsection";
+          addSub.disabled = processing;
+          addSub.onclick = () => handlePlanCardAction("add_subsection", { section_id: section.section_id });
+          controls.appendChild(addSub);
+
+          const editInst = document.createElement("button");
+          editInst.className = "report-plan-btn icon-btn";
+          editInst.title = "Edit instructions";
+          editInst.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+          editInst.disabled = processing;
+          editInst.onclick = () => handlePlanCardAction("edit_instructions", { section_id: section.section_id });
+          controls.appendChild(editInst);
+
+          const remove = document.createElement("button");
+          remove.className = "report-plan-btn icon-btn remove-btn";
+          remove.title = "Remove section";
+          remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+          remove.disabled = processing;
+          remove.onclick = () => handlePlanCardAction("remove_section", { section_id: section.section_id });
+          controls.appendChild(remove);
+
+          right.appendChild(controls);
+        }
+        row.appendChild(right);
+        card.appendChild(row);
+
+        if (section.instructions) {
+          const instructions = document.createElement("div");
+          instructions.className = "report-plan-instructions";
+          instructions.innerHTML = "<strong>Instructions:</strong> " + renderMarkdown(section.instructions);
+          card.appendChild(instructions);
+        }
+
+        if (Array.isArray(section.subsections) && section.subsections.length > 0) {
+          const subs = document.createElement("div");
+          subs.className = "report-plan-subsections";
+          for (const sub of section.subsections) {
+            subs.appendChild(renderPlanSection(sub, isLatest));
+          }
+          card.appendChild(subs);
+        }
+
+        return card;
+      }
+
+      function renderReportPlanCard(planCard, isLatest) {
+        const root = document.createElement("div");
+        root.className = "report-plan-card" + (isLatest ? "" : " readonly");
+        if (!planCard || typeof planCard !== "object") return root;
+
+        const header = document.createElement("div");
+        header.className = "report-plan-header";
+
+        const title = document.createElement("div");
+        title.className = "report-plan-title";
+        title.textContent = planCard.title || "Report Plan";
+        header.appendChild(title);
+
+        const cardStatus = (planCard.status || "scaffolding").toLowerCase();
+        const status = document.createElement("span");
+        const cardStatusClass = cardStatus === "pending" ? "status-pending"
+          : cardStatus === "completed" ? "status-completed"
+          : cardStatus === "generated" ? "status-generated"
+          : cardStatus === "ready" ? "status-ready" : "status-default";
+        status.className = "report-plan-status " + cardStatusClass;
+        status.textContent = cardStatus;
+        header.appendChild(status);
+        root.appendChild(header);
+
+        if (planCard.summary) {
+          const summary = document.createElement("div");
+          summary.className = "report-plan-summary";
+          summary.innerHTML = renderMarkdown(planCard.summary);
+          root.appendChild(summary);
+        }
+
+        if (!isLatest) {
+          const readonly = document.createElement("div");
+          readonly.className = "report-plan-readonly";
+          readonly.textContent = "Historical snapshot (read-only)";
+          root.appendChild(readonly);
+        }
+
+        const sectionsWrap = document.createElement("div");
+        sectionsWrap.className = "report-plan-sections";
+        for (const section of planCard.sections || []) {
+          sectionsWrap.appendChild(renderPlanSection(section, isLatest));
+        }
+        root.appendChild(sectionsWrap);
+
+        const footer = document.createElement("div");
+        footer.className = "report-plan-footer";
+
+        if (isLatest) {
+          const editTitle = document.createElement("button");
+          editTitle.className = "report-plan-btn";
+          editTitle.textContent = "Edit Title";
+          editTitle.disabled = processing;
+          editTitle.onclick = () => handlePlanCardAction("edit_title");
+          footer.appendChild(editTitle);
+
+          const addSection = document.createElement("button");
+          addSection.className = "report-plan-btn";
+          addSection.textContent = "Add Section";
+          addSection.disabled = processing;
+          addSection.onclick = () => handlePlanCardAction("add_section");
+          footer.appendChild(addSection);
+
+          const startNow = document.createElement("button");
+          startNow.className = "report-plan-btn primary";
+          startNow.textContent = "Start Now";
+          startNow.disabled = processing;
+          startNow.onclick = () => handlePlanCardAction("start_now");
+          footer.appendChild(startNow);
+        }
+
+        root.appendChild(footer);
+        return root;
+      }
+
+      function renderReportPlanBar() {
+        const bar = document.getElementById("reportPlanBar");
+        const plan = currentReportPlanState;
+
+        if (!plan || typeof plan !== "object") {
+          bar.className = "hidden";
+          return;
+        }
+
+        bar.className = planBarExpanded ? "expanded" : "";
+
+        document.getElementById("planBarTitle").textContent = plan.title || "Report Plan";
+        const planStatus = (plan.status || "scaffolding").toLowerCase();
+        const planStatusEl = document.getElementById("planBarStatus");
+        const planStatusClass = planStatus === "pending" ? "status-pending"
+          : planStatus === "completed" ? "status-completed"
+          : planStatus === "generated" ? "status-generated"
+          : planStatus === "ready" ? "status-ready" : "status-default";
+        planStatusEl.className = "report-plan-status " + planStatusClass;
+        planStatusEl.textContent = planStatus;
+
+        const headerControls = document.getElementById("planBarHeaderControls");
+        headerControls.innerHTML = "";
+
+        const editTitle = document.createElement("button");
+        editTitle.className = "report-plan-btn icon-btn";
+        editTitle.title = "Edit title";
+        editTitle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+        editTitle.disabled = processing;
+        editTitle.onclick = (e) => { e.stopPropagation(); handlePlanCardAction("edit_title"); };
+        headerControls.appendChild(editTitle);
+
+        const addSection = document.createElement("button");
+        addSection.className = "report-plan-btn icon-btn";
+        addSection.title = "Add section";
+        addSection.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+        addSection.disabled = processing;
+        addSection.onclick = (e) => { e.stopPropagation(); handlePlanCardAction("add_section"); };
+        headerControls.appendChild(addSection);
+
+        const isCompleted = (plan.status || "").toLowerCase() === "completed";
+        const startNow = document.createElement("button");
+        startNow.className = "report-plan-btn primary plan-bar-start-btn";
+        startNow.textContent = isCompleted ? "Regenerate" : "Start Now";
+        startNow.disabled = processing;
+        startNow.onclick = (e) => { e.stopPropagation(); handlePlanCardAction("start_now"); };
+        headerControls.appendChild(startNow);
+
+        const body = document.getElementById("planBarBodyInner");
+        body.innerHTML = "";
+
+        if (plan.summary) {
+          const summary = document.createElement("div");
+          summary.className = "report-plan-summary";
+          summary.innerHTML = renderMarkdown(plan.summary);
+          body.appendChild(summary);
+        }
+
+        const sectionsWrap = document.createElement("div");
+        sectionsWrap.className = "report-plan-sections";
+        for (const section of plan.sections || []) {
+          sectionsWrap.appendChild(renderPlanSection(section, true));
+        }
+        body.appendChild(sectionsWrap);
+      }
+
+      function buildArtifactsByMessage() {
+        const map = {};
+        const allArtifacts = [
+          ...(artifactPanes.uploaded_documents || []),
+          ...(artifactPanes.research_outputs || []),
+          ...(artifactPanes.report_documents || []),
+        ];
+        for (const a of allArtifacts) {
+          const mid = a.created_from_message_id;
+          if (!mid) continue;
+          if (!map[mid]) map[mid] = [];
+          map[mid].push(a);
+        }
+        return map;
+      }
+
+      function fileExtension(filename) {
+        if (!filename) return "";
+        const dot = filename.lastIndexOf(".");
+        return dot >= 0 ? filename.slice(dot + 1).toLowerCase() : "";
+      }
+
+      function createFileTypeIcon(filename, small) {
+        const ext = fileExtension(filename);
+        const el = document.createElement("span");
+        const sizeClass = small ? " sm" : "";
+
+        const map = {
+          docx: { cls: "docx", label: "W" },
+          doc:  { cls: "docx", label: "W" },
+          xlsx: { cls: "xlsx", label: "X" },
+          xls:  { cls: "xlsx", label: "X" },
+          csv:  { cls: "xlsx", label: "X" },
+          pdf:  { cls: "pdf",  label: "P" },
+          pptx: { cls: "pptx", label: "S" },
+          ppt:  { cls: "pptx", label: "S" },
+          txt:  { cls: "txt",  label: "T" },
+          md:   { cls: "txt",  label: "T" },
+        };
+
+        const info = map[ext] || { cls: "generic", label: ext ? ext[0].toUpperCase() : "?" };
+        el.className = `file-type-icon ${info.cls}${sizeClass}`;
+        el.textContent = info.label;
+        return el;
+      }
+
+      function positionBubbleRight(bubble, targetEl) {
+        const r = targetEl.getBoundingClientRect();
+        bubble.style.display = "";
+        const bh = bubble.offsetHeight;
+        bubble.style.top = Math.round(r.top + r.height / 2 - bh / 2) + "px";
+        bubble.style.left = Math.round(r.right + 14) + "px";
+      }
+
+      function positionBubbleAbove(bubble, targetEl) {
+        const r = targetEl.getBoundingClientRect();
+        bubble.style.display = "";
+        const bw = bubble.offsetWidth;
+        bubble.style.top = Math.round(r.top - bubble.offsetHeight - 14) + "px";
+        bubble.style.left = Math.round(r.left + r.width / 2 - bw / 2) + "px";
+      }
+
+      function renderWelcome() {
+        const tourSessions = document.getElementById("tour-sessions");
+        const tourInput = document.getElementById("tour-input");
+        const hasSession = Boolean(currentSessionId);
+        const sidebarVisible = leftOpen;
+
+        // Hide all first
+        tourSessions.style.display = "none";
+        tourInput.style.display = "none";
+
+        // User is always logged in by the time they see the main app
+        if (!hasSession) {
+          if (sidebarVisible) {
+            const sessHeader = document.querySelector("#container-sessions .sidebar-container-header");
+            if (sessHeader) positionBubbleRight(tourSessions, sessHeader);
+          }
+          const inputEl = document.getElementById("messageInput");
+          if (inputEl) positionBubbleAbove(tourInput, inputEl);
+        }
+      }
+
+      function renderMessages() {
+        const messages = currentMessages || [];
+        const container = document.getElementById("messagesContainer");
+        const welcome = document.getElementById("welcome");
+
+        if (messages.length === 0) {
+          renderWelcome();
+          welcome.style.display = "";
+          container.style.display = "none";
+          return;
+        }
+
+        welcome.style.display = "none";
+        container.style.display = "flex";
+        container.innerHTML = "";
+
+        const artifactsByMsg = buildArtifactsByMessage();
+
+        for (const msg of messages) {
+          const role = msg.role === "assistant" ? "assistant" : "user";
+          const bubble = document.createElement("div");
+          bubble.className = "msg " + role;
+          const textEl = document.createElement("div");
+          textEl.className = "msg-text";
+          if (role === "assistant") {
+            textEl.innerHTML = renderMarkdown(msg.content_text || "");
+          } else {
+            textEl.textContent = msg.content_text || "";
+          }
+          bubble.appendChild(textEl);
+
+          const linkedArtifacts = artifactsByMsg[msg.message_id];
+          if (linkedArtifacts && linkedArtifacts.length > 0 && role === "assistant") {
+            const chipsRow = document.createElement("div");
+            chipsRow.className = "msg-artifacts";
+            for (const artifact of linkedArtifacts) {
+              const chip = document.createElement("div");
+              chip.className = "msg-artifact-chip";
+              chip.title = artifact.filename || artifact.artifact_id;
+              chip.onclick = async (e) => {
+                e.stopPropagation();
+                activePreviewArtifactId = artifact.artifact_id;
+                await loadArtifactPreview(artifact.artifact_id);
+                renderArtifactPanes();
+                rightOpen = true;
+                applyLayout();
+              };
+
+              const icon = document.createElement("span");
+              icon.className = "msg-artifact-chip-icon";
+              const fileIcon = createFileTypeIcon(artifact.filename, false);
+              fileIcon.classList.add("lg");
+              icon.appendChild(fileIcon);
+              chip.appendChild(icon);
+
+              const name = document.createElement("span");
+              name.className = "msg-artifact-chip-name";
+              name.textContent = artifact.filename || artifact.artifact_type;
+              chip.appendChild(name);
+
+              chipsRow.appendChild(chip);
+            }
+            bubble.appendChild(chipsRow);
+          }
+
+          const metaParts = [];
+          if (msg.processing_state) metaParts.push(msg.processing_state);
+          if (msg.created_at) metaParts.push(formatDate(msg.created_at));
+          if (msg.role === "assistant") metaParts.push(`op=${msg.message_id}`);
+
+          if (msg.error && typeof msg.error === "object") {
+            const errorText = msg.error.message || msg.error.error_code || JSON.stringify(msg.error);
+            metaParts.push(`error=${errorText}`);
+          }
+
+          if (metaParts.length > 0) {
+            const meta = document.createElement("div");
+            meta.className = "meta";
+            meta.textContent = metaParts.join(" | ");
+            bubble.appendChild(meta);
+          }
+
+          container.appendChild(bubble);
+        }
+
+        scrollChatToBottom();
+      }
+
+      function clearPreview(message = "Select a document artifact to preview") {
+        const emptyEl = document.getElementById("previewEmpty");
+        const frame = document.getElementById("previewFrame");
+        emptyEl.textContent = message;
+        emptyEl.style.display = "";
+        frame.style.display = "none";
+        frame.removeAttribute("src");
+        frame.srcdoc = "";
+      }
+
+      async function loadArtifactPreview(artifactId) {
+        if (!currentSessionId || !artifactId) {
+          clearPreview();
+          return;
+        }
+
+        const result = await api("GET", `/api/v2/sessions/${currentSessionId}/artifacts/${artifactId}/preview`);
+        if (result.status !== "ok") {
+          clearPreview(`Preview unavailable: ${result.message || "unknown error"}`);
+          return;
+        }
+
+        const emptyEl = document.getElementById("previewEmpty");
+        const frame = document.getElementById("previewFrame");
+
+        if (result.preview_format === "html" && result.preview_content) {
+          emptyEl.style.display = "none";
+          frame.style.display = "";
+          frame.removeAttribute("src");
+          frame.srcdoc = result.preview_content;
+          return;
+        }
+
+        if (result.preview_url) {
+          emptyEl.style.display = "none";
+          frame.style.display = "";
+          frame.removeAttribute("src");
+          frame.srcdoc = `<!doctype html><html><body style="font-family:Arial,sans-serif;padding:16px;"><h3>Preview URL</h3><p>This artifact is not directly renderable in-browser.</p><pre style="white-space:pre-wrap;word-break:break-word;">${escapeHtml(result.preview_url)}</pre></body></html>`;
+          return;
+        }
+
+        clearPreview("No preview content available for this artifact");
+      }
+
+      function render() {
+        renderUserStatus();
+        renderSessions();
+        renderDataSources();
+        renderArtifactPanes();
+        renderMessages();
+        renderReportPlanBar();
+        renderWelcome();
+        updateFooterMeta();
+        setControlsDisabled();
+        updateContainerBadges();
+
+        if (currentSession && currentSession.title) {
+          document.getElementById("centerTitle").textContent = currentSession.title;
+        } else if (currentSessionId) {
+          document.getElementById("centerTitle").textContent = `Session ${currentSessionId.slice(0, 8)}`;
+        } else {
+          document.getElementById("centerTitle").textContent = "Finance Assist";
+        }
+        document.getElementById("titleEditBtn").style.display = currentSessionId ? "" : "none";
+      }
+
+      async function loadDataSourceCatalog() {
+        const result = await api("GET", "/api/v2/data-sources/catalog?enabled=true");
+        if (result.status !== "ok") {
+          dataSourceCatalog = [];
+          render();
+          return;
+        }
+        dataSourceCatalog = result.sources || [];
+
+        // Select all by default
+        selectedSourceFilters.clear();
+        for (const source of dataSourceCatalog) {
+          selectedSourceFilters.add(source.source_id);
+        }
+
+        render();
+      }
+
+      async function loadUserSessions(options = {}) {
+        const openMostRecent = options.openMostRecent !== false;
+
+        if (!currentUserId) {
+          userSessions = [];
+          currentSessionId = null;
+          currentSession = null;
+          currentMessages = [];
+          currentReportPlanState = null;
+          artifactPanes = { uploaded_documents: [], research_outputs: [], report_documents: [] };
+          activePreviewArtifactId = null;
+          clearPreview();
+          render();
+          return;
+        }
+
+        const result = await api("GET", `/api/v2/users/${currentUserId}/sessions?limit=200`);
+        if (result.status !== "ok") {
+          addChatNotice(`Failed to load sessions: ${result.message || "unknown error"}`, true);
+          return;
+        }
+
+        userSessions = result.sessions || [];
+
+        if (currentSessionId) {
+          const found = userSessions.some((session) => session.session_id === currentSessionId);
+          if (!found) {
+            currentSessionId = null;
+            currentSession = null;
+            currentMessages = [];
+            currentReportPlanState = null;
+            artifactPanes = { uploaded_documents: [], research_outputs: [], report_documents: [] };
+            activePreviewArtifactId = null;
+            clearPreview();
+          }
+        }
+
+        render();
+
+        if (openMostRecent && !currentSessionId && userSessions.length > 0) {
+          await hydrateSession(userSessions[0].session_id);
+        }
+      }
+
+      async function hydrateSession(sessionId) {
+        const result = await api("GET", `/api/v2/sessions/${sessionId}/hydrate`);
+        if (result.status !== "ok") {
+          addChatNotice(`Failed to hydrate session: ${result.message || "unknown error"}`, true);
+          return;
+        }
+
+        currentSessionId = sessionId;
+        currentSession = result.session || null;
+        currentMessages = result.messages || [];
+        currentReportPlanState = cloneJson(latestReportPlanCard(currentMessages));
+        artifactPanes = result.artifact_panes || {
+          uploaded_documents: [],
+          research_outputs: [],
+          report_documents: [],
+        };
+
+        const allIds = new Set([
+          ...(artifactPanes.uploaded_documents || []).map((item) => item.artifact_id),
+          ...(artifactPanes.research_outputs || []).map((item) => item.artifact_id),
+          ...(artifactPanes.report_documents || []).map((item) => item.artifact_id),
+        ]);
+
+        if (result.active_preview_artifact_id && allIds.has(result.active_preview_artifact_id)) {
+          activePreviewArtifactId = result.active_preview_artifact_id;
+        } else if (activePreviewArtifactId && !allIds.has(activePreviewArtifactId)) {
+          activePreviewArtifactId = null;
+        }
+
+        updateContainerStates();
+        render();
+
+        if (activePreviewArtifactId) {
+          await loadArtifactPreview(activePreviewArtifactId);
+        } else {
+          clearPreview();
+        }
+      }
+
+      async function waitForOperation(operationId, maxAttempts = 40, delayMs = 500) {
+        if (!currentSessionId || !operationId) return;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+          const result = await api("GET", `/api/v2/sessions/${currentSessionId}/operations/${operationId}`);
+          if (result.status !== "ok") return;
+          const state = result.operation?.state;
+          if (state === "completed" || state === "failed") return;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+
+      function showLoginError(msg) {
+        const el = document.getElementById("loginError");
+        el.textContent = msg;
+        el.classList.add("visible");
+      }
+
+      function hideLoginError() {
+        const el = document.getElementById("loginError");
+        el.textContent = "";
+        el.classList.remove("visible");
+      }
+
+      function hideLoginScreen() {
+        const screen = document.getElementById("loginScreen");
+        screen.classList.add("hidden");
+      }
+
+      function showLoginScreen() {
+        const screen = document.getElementById("loginScreen");
+        screen.classList.remove("hidden");
+      }
+
+      async function loginUser() {
+        const input = document.getElementById("loginEmployeeId");
+        const employeeId = (input.value || "").trim();
+        hideLoginError();
+
+        if (!/^\d{9}$/.test(employeeId)) {
+          showLoginError("Employee ID must be exactly 9 digits.");
+          return;
+        }
+
+        document.getElementById("loginSubmitBtn").disabled = true;
+        const result = await api("POST", "/api/v2/auth/login", { employee_id: employeeId });
+        document.getElementById("loginSubmitBtn").disabled = false;
+
+        if (result.status !== "ok") {
+          showLoginError(`Login failed: ${result.message || "unknown error"}`);
+          return;
+        }
+
+        currentUserId = result.user.user_id;
+        sessionStorage.setItem("docxAgentUserId", currentUserId);
+
+        hideLoginScreen();
+        await loadDataSourceCatalog();
+        await loadUserSessions();
+        updateContainerStates();
+        render();
+      }
+
+      async function createSession() {
+        if (!currentUserId) {
+          addChatNotice("Log in before creating a session.", true);
+          return;
+        }
+
+        const titleInput = document.getElementById("newSessionTitle");
+        const title = (titleInput.value || "").trim();
+
+        const result = await api("POST", "/api/v2/sessions", {
+          user_id: currentUserId,
+          title: title || null,
+          metadata: {},
+        });
+        if (result.status !== "ok") {
+          addChatNotice(`Failed to create session: ${result.message || "unknown error"}`, true);
+          return;
+        }
+
+        titleInput.value = "";
+        await loadUserSessions({ openMostRecent: false });
+        await hydrateSession(result.session.session_id);
+      }
+
+      async function uploadDocumentPath() {
+        if (!currentSessionId) {
+          addChatNotice("Select a session before uploading a document path.", true);
+          return;
+        }
+
+        const filePath = window.prompt("Enter the absolute path to the document:");
+        if (!filePath || !filePath.trim()) return;
+
+        const result = await api("POST", `/api/v2/sessions/${currentSessionId}/artifacts/upload`, {
+          file_path: filePath.trim(),
+          artifact_type: "upload",
+        });
+
+        if (result.status !== "ok") {
+          addChatNotice(`Upload failed: ${result.message || "unknown error"}`, true);
+          return;
+        }
+
+        const ingestion = result.ingestion_state || "unknown";
+        addChatNotice(`Uploaded ${result.artifact?.filename || filePath.trim()} (ingestion: ${ingestion}).`);
+        await hydrateSession(currentSessionId);
+      }
+
+      async function sendRespondRequest({ messageText = "", reportPlanAction = null } = {}) {
+        if (processing || !currentSessionId) return;
+        const text = String(messageText || "").trim();
+        if (!text && !reportPlanAction) return;
+
+        if (text) {
+          appendLocalMessage("user", text);
+        }
+        processing = true;
+        setControlsDisabled();
+        showTyping(true);
+
+        const payload = {
+          response_mode: "auto",
+        };
+        if (text) payload.message = text;
+        if (selectedSourceFilters.size > 0 && selectedSourceFilters.size < dataSourceCatalog.length) {
+          payload.data_source_filters = Array.from(selectedSourceFilters);
+        }
+        if (currentReportPlanState && typeof currentReportPlanState === "object") {
+          payload.report_plan_state = cloneJson(currentReportPlanState);
+        }
+        if (reportPlanAction) {
+          payload.report_plan_action = reportPlanAction;
+        }
+
+        try {
+          const result = await api("POST", `/api/v2/sessions/${currentSessionId}/respond`, payload);
+          if (result.status !== "ok") {
+            showTyping(false);
+            addChatNotice(`Assistant request failed: ${result.message || "unknown error"}`, true);
+            return;
+          }
+
+          const operation = result.operation;
+          if (operation && operation.state === "pending") {
+            await waitForOperation(operation.operation_id);
+          }
+
+          showTyping(false);
+          await hydrateSession(currentSessionId);
+          await loadUserSessions({ openMostRecent: false });
+        } catch (error) {
+          showTyping(false);
+          addChatNotice(`Request failed: ${error.message}`, true);
+        } finally {
+          processing = false;
+          setControlsDisabled();
+          renderMessages();
+          renderReportPlanBar();
+        }
+      }
+
+      async function sendMessage() {
+        if (processing) return;
+        const text = (messageInput.value || "").trim();
+        if (!text) return;
+
+        if (!currentSessionId) {
+          if (!currentUserId) {
+            addChatNotice("Please log in before sending a message.", true);
+            return;
+          }
+          try {
+            const result = await api("POST", "/api/v2/sessions", { user_id: currentUserId });
+            if (result.status !== "ok") {
+              addChatNotice(`Failed to create session: ${result.message || "unknown error"}`, true);
+              return;
+            }
+            currentSessionId = result.session.session_id;
+            updateContainerStates();
+            await loadUserSessions({ openMostRecent: false });
+          } catch (e) {
+            addChatNotice(`Failed to create session: ${e.message}`, true);
+            return;
+          }
+        }
+
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+        await sendRespondRequest({ messageText: text });
+      }
+
+      document.getElementById("sendBtn").onclick = sendMessage;
+      document.getElementById("loginSubmitBtn").onclick = loginUser;
+      document.getElementById("createSessionBtn").onclick = createSession;
+      document.getElementById("uploadDocBtn").onclick = uploadDocumentPath;
+      document.getElementById("selectAllSourcesBtn").onclick = () => {
+        for (const source of dataSourceCatalog) selectedSourceFilters.add(source.source_id);
+        renderDataSources();
+        updateFooterMeta();
+      };
+      document.getElementById("selectNoneSourcesBtn").onclick = () => {
+        selectedSourceFilters.clear();
+        renderDataSources();
+        updateFooterMeta();
+      };
+
+      document.getElementById("configBtn").onclick = (event) => {
+        event.stopPropagation();
+        const popover = document.getElementById("configPopover");
+        popover.classList.toggle("open");
+      };
+      document.addEventListener("click", (event) => {
+        const popover = document.getElementById("configPopover");
+        const anchor = event.target.closest(".config-popover-anchor");
+        if (!anchor && popover.classList.contains("open")) {
+          popover.classList.remove("open");
+        }
+      });
+
+      document.getElementById("loginEmployeeId").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") loginUser();
+      });
+      document.getElementById("loginPassword").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") loginUser();
+      });
+      document.getElementById("newSessionTitle").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") createSession();
+      });
+      (async () => {
+        try {
+          applyLayout();
+
+          if (currentUserId) {
+            // Hide login screen immediately to avoid flash during re-auth
+            hideLoginScreen();
+            const loginResult = await api("POST", "/api/v2/auth/login", { employee_id: currentUserId });
+            if (loginResult.status === "ok") {
+              await loadDataSourceCatalog();
+              await loadUserSessions();
+              updateContainerStates();
+              render();
+            } else {
+              sessionStorage.removeItem("docxAgentUserId");
+              currentUserId = "";
+              showLoginScreen();
+              render();
+            }
+          } else {
+            showLoginScreen();
+            render();
+          }
+        } catch (error) {
+          showLoginScreen();
+          addChatNotice(`Failed to connect to server: ${error.message}`, true);
+        }
+      })();
+    </script>
+  </body>
+</html>

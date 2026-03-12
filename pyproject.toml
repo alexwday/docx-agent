@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docx-agent"
+version = "0.1.0"
+description = "Main Python Word Agent and custom MCP server for template-aware DOCX editing."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "docx-agent contributors" }
+]
+dependencies = [
+  "python-docx>=1.1.2",
+  "openai>=1.0.0",
+  "psycopg[binary]>=3.2.0",
+  "openpyxl>=3.1.0",
+  "markdown-it-py>=3.0.0",
+  "requests>=2.32.0",
+  "certifi>=2024.0.0",
+  "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+mcp = [
+  "fastmcp>=2.8.0",
+]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+word-mcp-server = "word_mcp_server.server:main"
+word-ui-server = "word_ui.web_server:main"
+word-store-migrate = "word_store.migrate:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+word_ui = ["static/*.html"]
+data_sources = ["sql/*.sql"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

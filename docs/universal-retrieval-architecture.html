@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRIS Enhancement</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent-blue: #2563eb;
+    --accent-blue-light: #dbeafe;
+    --accent-green: #059669;
+    --accent-green-light: #d1fae5;
+    --accent-purple: #7c3aed;
+    --accent-purple-light: #ede9fe;
+    --accent-orange: #d97706;
+    --accent-orange-light: #fef3c7;
+    --accent-red: #dc2626;
+    --accent-red-light: #fee2e2;
+    --accent-teal: #0d9488;
+    --accent-teal-light: #ccfbf1;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --card-shadow-lg: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text);
+    background: #f8fafc;
+    line-height: 1.5;
+    padding: 40px 20px;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 48px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2 .step-num {
+    background: var(--accent-blue);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .section {
+    margin-bottom: 56px;
+  }
+
+  /* ── Flow diagrams ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
+    color: var(--muted);
+    font-size: 20px;
+  }
+
+  .flow-arrow-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: -4px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    min-width: 220px;
+    max-width: 280px;
+    flex: 1;
+  }
+
+  .card-wide {
+    max-width: 600px;
+    min-width: 400px;
+  }
+
+  .card-full {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .card p, .card li {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+  }
+
+  .card ul {
+    padding-left: 16px;
+    margin-top: 6px;
+  }
+
+  .card li {
+    margin-bottom: 3px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .badge-blue { background: var(--accent-blue-light); color: var(--accent-blue); }
+  .badge-green { background: var(--accent-green-light); color: var(--accent-green); }
+  .badge-purple { background: var(--accent-purple-light); color: var(--accent-purple); }
+  .badge-orange { background: var(--accent-orange-light); color: var(--accent-orange); }
+  .badge-red { background: var(--accent-red-light); color: var(--accent-red); }
+  .badge-teal { background: var(--accent-teal-light); color: var(--accent-teal); }
+  .badge-amber { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+  /* ── Colored left-border cards ── */
+  .card-blue { border-left: 4px solid var(--accent-blue); }
+  .card-green { border-left: 4px solid var(--accent-green); }
+  .card-purple { border-left: 4px solid var(--accent-purple); }
+  .card-orange { border-left: 4px solid var(--accent-orange); }
+  .card-red { border-left: 4px solid var(--accent-red); }
+  .card-teal { border-left: 4px solid var(--accent-teal); }
+
+  /* ── Process flow (vertical) ── */
+  .process {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+  }
+
+  .process-step {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 24px;
+    box-shadow: var(--card-shadow);
+    width: 100%;
+    max-width: 700px;
+    position: relative;
+  }
+
+  .process-step .step-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .process-step .step-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .process-step p, .process-step li {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .process-connector {
+    width: 2px;
+    height: 20px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .process-connector::after {
+    content: '▼';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── Split flow ── */
+  .split-container {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: flex-start;
+  }
+
+  .split-half {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .split-divider {
+    width: 2px;
+    background: var(--border);
+    align-self: stretch;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .split-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+
+  .split-label-blue { background: var(--accent-blue-light); color: var(--accent-blue); }
+  .split-label-orange { background: var(--accent-orange-light); color: var(--accent-orange); }
+  .split-label-green { background: var(--accent-green-light); color: var(--accent-green); }
+  .split-label-purple { background: var(--accent-purple-light); color: var(--accent-purple); }
+
+  /* ── Decision diamond ── */
+  .decision {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .diamond {
+    background: var(--accent-orange-light);
+    border: 2px solid var(--accent-orange);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-orange);
+    text-align: center;
+    transform: rotate(0deg); /* keeping it readable */
+  }
+
+  /* ── Two-column layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+  }
+
+  .four-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+  }
+
+  /* ── Merge indicator ── */
+  .merge-bar {
+    width: 100%;
+    max-width: 900px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-green), var(--accent-purple), var(--accent-orange));
+    border-radius: 2px;
+    margin: 4px auto;
+  }
+
+  /* ── Database cylinder ── */
+  .db-shape {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 2px solid var(--accent-blue);
+    border-radius: 12px;
+    padding: 20px 28px;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .db-shape .db-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-bottom: 8px;
+  }
+
+  .db-shape .db-tables {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Highlight box ── */
+  .highlight {
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .highlight strong {
+    color: var(--accent-orange);
+  }
+
+  /* ── Page break for printing ── */
+  .page-break {
+    page-break-before: always;
+    margin-top: 40px;
+  }
+
+  /* ── File type icons ── */
+  .file-icon {
+    width: 52px;
+    height: 64px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .file-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .file-icons-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .file-icon-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .file-icon-group .file-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .source-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    box-shadow: var(--card-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 300px;
+    max-width: 480px;
+  }
+
+  .source-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .source-card-desc {
+    font-size: 13px;
+    color: #374151;
+    text-align: center;
+  }
+
+  @media print {
+    body { padding: 20px; background: white; }
+    .section { page-break-inside: avoid; }
+  }
+
+  /* ── Table ── */
+  table.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  table.info-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+  }
+
+  table.info-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Universal Document Ingestion, Research, and Report Creation</h1>
+<p class="subtitle">An agent framework that transforms your document library into a queryable knowledge base — enabling analysts to retrieve information, synthesise research across sources, and produce structured reports through a conversational chat interface.</p>
+
+<!-- Tabs -->
+<div style="display:flex; gap:0; border-bottom:2px solid #e2e8f0; margin-bottom:24px">
+  <button onclick="showTab('ingestion')" id="tab-ingestion" style="padding:8px 20px; font-size:13px; font-weight:600; border:none; background:none; cursor:pointer; color:#1e40af; border-bottom:2px solid #1e40af; margin-bottom:-2px; transition:all 0.15s">Ingestion</button>
+  <button onclick="showTab('research')" id="tab-research" style="padding:8px 20px; font-size:13px; font-weight:600; border:none; background:none; cursor:pointer; color:#94a3b8; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s">Research</button>
+  <button onclick="showTab('report')" id="tab-report" style="padding:8px 20px; font-size:13px; font-weight:600; border:none; background:none; cursor:pointer; color:#94a3b8; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s">Reports</button>
+</div>
+
+<script>
+function showTab(name) {
+  ['ingestion','research','report'].forEach(function(t) {
+    document.getElementById('panel-' + t).style.display = t === name ? 'block' : 'none';
+    var btn = document.getElementById('tab-' + t);
+    btn.style.color = t === name ? '#1e40af' : '#94a3b8';
+    btn.style.borderBottom = t === name ? '2px solid #1e40af' : '2px solid transparent';
+  });
+}
+</script>
+
+<!-- Ingestion panel -->
+<div id="panel-ingestion">
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: OVERVIEW -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+
+  <div style="display:flex; flex-direction:column">
+
+    <!-- ── Section Label: Data Sources ── -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">High Level</div>
+    </div>
+
+    <!-- ── Stage: Input Sources ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Input Sources</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Named folders — subfolders become queryable filters. Data source and filter descriptions are configured via a database registry table.</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- DATA SOURCE INPUT -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px; display:flex; align-items:center; gap:7px">
+        <!-- folder icon -->
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M2 5a2 2 0 012-2h3.586a1 1 0 01.707.293L9.707 4.7A1 1 0 0010.414 5H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" stroke="#475569" stroke-width="1.5" fill="none"/></svg>
+        Data Source Input Folders
+        <span style="font-size:9px; font-weight:500; color:#94a3b8; margin-left:4px">Files are organised by data source — subfolders become queryable filters</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px">
+
+        <!-- Example: no subfolders -->
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+          <div style="font-weight:700; color:#1e293b; font-family:system-ui; font-size:10px; margin-bottom:4px">Internal Policy Documents</div>
+          <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; color:#94a3b8; font-style:italic">No filters</div>
+          <div style="color:#64748b">📁 internal_policy_documents/</div>
+          <div style="color:#94a3b8; padding-left:12px">├── aml_policy.pdf</div>
+          <div style="color:#94a3b8; padding-left:12px">├── credit_risk.docx</div>
+          <div style="color:#94a3b8; padding-left:12px">├── liquidity.pdf</div>
+          <div style="color:#94a3b8; padding-left:12px">└── onboarding.docx</div>
+        </div>
+
+        <!-- Example: 1 level (period) -->
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+          <div style="font-weight:700; color:#1e293b; font-family:system-ui; font-size:10px; margin-bottom:4px">IR Quarterly Notes</div>
+          <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; display:flex; gap:4px; flex-wrap:wrap">
+            <span style="background:#ccfbf1; color:#0d9488; border-radius:3px; padding:1px 5px; font-weight:600">Filter: Period</span>
+          </div>
+          <div style="color:#64748b">📁 ir_quarterly_notes/</div>
+          <div style="color:#0d9488; padding-left:12px">├── 2025_Q1/</div>
+          <div style="color:#94a3b8; padding-left:24px">│ ├── transcript.txt</div>
+          <div style="color:#94a3b8; padding-left:24px">│ ├── presentation.ppt</div>
+          <div style="color:#94a3b8; padding-left:24px">│ ├── briefing.docx</div>
+          <div style="color:#94a3b8; padding-left:24px">│ └── report.pdf</div>
+          <div style="color:#0d9488; padding-left:12px">└── 2025_Q2/</div>
+          <div style="color:#94a3b8; padding-left:24px">  └── ...</div>
+        </div>
+
+        <!-- Example: 2 levels (period + entity) -->
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+          <div style="font-weight:700; color:#1e293b; font-family:system-ui; font-size:10px; margin-bottom:4px">Supplementary Financials</div>
+          <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; display:flex; gap:4px; flex-wrap:wrap">
+            <span style="background:#ccfbf1; color:#0d9488; border-radius:3px; padding:1px 5px; font-weight:600">Filter: Period</span>
+            <span style="background:#ede9fe; color:#7c3aed; border-radius:3px; padding:1px 5px; font-weight:600">Filter: Entity</span>
+          </div>
+          <div style="color:#64748b">📁 supplementary_financials/</div>
+          <div style="color:#0d9488; padding-left:12px">├── 2025_Q1/</div>
+          <div style="color:#7c3aed; padding-left:24px">│ ├── RBC/</div>
+          <div style="color:#94a3b8; padding-left:36px">│ │ └── supp.xlsx</div>
+          <div style="color:#7c3aed; padding-left:24px">│ └── TD/</div>
+          <div style="color:#94a3b8; padding-left:36px">│   └── supp.xlsx</div>
+        </div>
+
+      <!-- Ad-hoc -->
+      <div style="background:#fdf4ff; border:1.5px dashed #d946ef; border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569; position:relative">
+        <div style="font-weight:700; color:#86198f; font-family:system-ui; font-size:10px; margin-bottom:4px">Ad-hoc</div>
+        <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; color:#c084fc; font-style:italic">No filters</div>
+        <div style="color:#a21caf">📁 ad_hoc/</div>
+        <div style="color:#94a3b8; padding-left:12px">└── user_uploaded_file.pdf</div>
+        <div style="margin-top:6px; font-family:system-ui; font-size:8px; color:#a21caf; font-style:italic">* per conversation</div>
+      </div>
+
+      </div>
+    </div><!-- end data source card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Document Types ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Input Types</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Supported formats: PDF, DOCX, PPT, MD, XLSX, and CSV</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- File types row -->
+    <div style="display:flex; gap:32px; flex-wrap:wrap; justify-content:center; width:100%">
+
+      <!-- Page-Based Source Card -->
+      <div style="background:white; border:1.5px solid var(--border); border-top:3px solid var(--accent-blue); border-radius:12px; padding:14px 20px; box-shadow:var(--card-shadow); flex:1; min-width:280px; max-width:420px">
+        <div style="font-size:12px; font-weight:700; color:var(--accent-blue); margin-bottom:12px; text-align:center">Page-Based Documents</div>
+        <div style="display:flex; gap:10px; align-items:center; justify-content:center; margin-bottom:12px">
+          <!-- PDF -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#DC2626"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B91C1C"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PDF</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">PDF</span>
+          </div>
+          <!-- DOCX -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">DOCX</span>
+          </div>
+          <!-- PPT -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#D97706"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B45309"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PPT</text><rect x="12" y="17" width="16" height="11" rx="1" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">PPT</span>
+          </div>
+          <!-- MD -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#6B7280"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#4B5563"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">MD</text><text x="16" y="26" fill="rgba(255,255,255,0.5)" font-family="system-ui" font-size="12" font-weight="700">#</text></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">MD</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center">
+          <span class="badge badge-blue">Financial Reports</span>
+          <span class="badge badge-blue">Statements</span>
+          <span class="badge badge-blue">Policy Documents</span>
+          <span class="badge badge-blue">Procedure Documentation</span>
+          <span class="badge badge-blue">Slide Decks</span>
+          <span class="badge badge-blue">Earnings Call Transcripts</span>
+        </div>
+      </div>
+
+      <!-- Tabular Source Card -->
+      <div style="background:white; border:1.5px solid var(--border); border-top:3px solid var(--accent-orange); border-radius:12px; padding:14px 20px; box-shadow:var(--card-shadow); flex:1; min-width:280px; max-width:420px">
+        <div style="font-size:12px; font-weight:700; color:var(--accent-orange); margin-bottom:12px; text-align:center">Tabular Documents</div>
+        <div style="display:flex; gap:10px; align-items:center; justify-content:center; margin-bottom:12px">
+          <!-- XLSX -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#059669"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#047857"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">XLSX</text><rect x="10" y="17" width="18" height="12" rx="1" stroke="rgba(255,255,255,0.5)" stroke-width="1" fill="none"/><line x1="16" y1="17" x2="16" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="22" y1="17" x2="22" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="21" x2="28" y2="21" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="25" x2="28" y2="25" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">XLSX</span>
+          </div>
+          <!-- CSV -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+            <svg width="28" height="34" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#0D9488"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#0F766E"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">CSV</text><text x="12" y="24" fill="rgba(255,255,255,0.45)" font-family="monospace" font-size="7">a,b,c</text><text x="12" y="30" fill="rgba(255,255,255,0.35)" font-family="monospace" font-size="7">1,2,3</text></svg>
+            <span style="font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase">CSV</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center">
+          <span class="badge badge-orange">Register Tables</span>
+          <span class="badge badge-orange">Data Tables</span>
+          <span class="badge badge-orange">Financial Reports</span>
+          <span class="badge badge-orange">Supplementary Financial Data</span>
+          <span class="badge badge-orange">Report to Shareholders</span>
+          <span class="badge badge-orange">Pillar 3 Disclosure</span>
+        </div>
+      </div>
+
+    </div><!-- end file types row -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- ── Section Divider: Overview → Processing Pipeline ── -->
+    <div style="margin:20px 0 16px; border-top:1.5px solid var(--border); padding-top:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">Technical</div>
+    </div>
+
+    <!-- ── Stage: Classification ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Classification</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Content type detected per page — Text, Table, or Visual</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- Classification -->
+      <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; box-shadow:var(--card-shadow); max-width:860px; width:100%;">
+
+        <!-- Header -->
+        <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Content Classification</div>
+
+        <!-- Two method groups -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+
+          <!-- GPT-5 Vision group: PDF + DOCX -->
+          <div style="background:#fff1f2; border:1.5px solid #fca5a5; border-radius:8px; padding:8px 10px">
+            <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="2.5" stroke="#dc2626" stroke-width="1.5"/></svg>
+              <span style="font-size:10px; font-weight:700; color:#dc2626">GPT-5 Vision</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+              <!-- PDF -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#DC2626"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B91C1C"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PDF</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">PDF</span>
+              </div>
+              <!-- DOCX -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">DOCX</span>
+              </div>
+              <div style="font-size:9px; color:#7f1d1d; background:#fee2e2; border-radius:4px; padding:4px 7px; line-height:1.3; flex:1">Render each page as an image → GPT-5 Vision classifies content</div>
+            </div>
+          </div>
+
+          <!-- Structural parse group -->
+          <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 10px">
+            <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span style="font-size:10px; font-weight:700; color:#475569">Structural Parse</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+              <!-- PPT -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#D97706"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B45309"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PPT</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">PPT</span>
+              </div>
+              <!-- XLSX -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#059669"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#047857"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">XLSX</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">XLSX</span>
+              </div>
+              <!-- CSV -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#0D9488"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#0F766E"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">CSV</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">CSV</span>
+              </div>
+              <!-- MD -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+                <svg width="22" height="27" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#6B7280"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#4B5563"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">MD</text></svg>
+                <span style="font-size:8px; font-weight:700; color:#9ca3af">MD</span>
+              </div>
+              <div style="font-size:9px; color:#1e293b; background:#e2e8f0; border-radius:4px; padding:4px 7px; line-height:1.3; flex:1">Inspect object model — shapes, fill ratio, images, charts — no LLM required</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Output: per-page flags by doc type -->
+        <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:10px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Output — Per-Page Content Flags by Document Type</div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px">
+
+            <!-- PDF -->
+            <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:6px 7px">
+              <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:5px">
+                <svg width="20" height="24" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#DC2626"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B91C1C"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PDF</text></svg>
+                <span style="font-size:9px; font-weight:700; color:#dc2626">PDF</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:38px">Page 1</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:38px">Page 2</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span><span class="badge badge-orange" style="font-size:8px; padding:2px 6px">Table</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:38px">Page 3</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span><span class="badge badge-purple" style="font-size:8px; padding:2px 6px">Visual</span></div>
+              </div>
+            </div>
+
+            <!-- PPT -->
+            <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:6px 7px">
+              <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:5px">
+                <svg width="20" height="24" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#D97706"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#B45309"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="12" font-weight="700">PPT</text></svg>
+                <span style="font-size:9px; font-weight:700; color:#d97706">PPT</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:40px">Slide 1</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:40px">Slide 2</span><span class="badge badge-purple" style="font-size:8px; padding:2px 6px">Visual</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:40px">Slide 3</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span><span class="badge badge-purple" style="font-size:8px; padding:2px 6px">Visual</span></div>
+              </div>
+            </div>
+
+            <!-- XLSX -->
+            <div style="background:#ecfdf5; border:1px solid #6ee7b7; border-radius:8px; padding:6px 7px">
+              <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:5px">
+                <svg width="20" height="24" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#059669"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#047857"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">XLSX</text></svg>
+                <span style="font-size:9px; font-weight:700; color:#059669">XLSX</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:42px">Sheet 1</span><span class="badge badge-green" style="font-size:8px; padding:2px 6px">Text</span><span class="badge badge-purple" style="font-size:8px; padding:2px 6px">Visual</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:42px">Sheet 2</span><span class="badge badge-orange" style="font-size:8px; padding:2px 6px">Table</span></div>
+                <div style="display:flex; align-items:center; gap:3px"><span style="font-size:8px; color:var(--muted); font-weight:600; min-width:42px">Sheet 3</span><span class="badge badge-amber" style="font-size:8px; padding:2px 6px">Dense Table</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- end classification card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Extraction ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Extraction</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Text via OCR; images and tables extracted via GPT-5 Vision</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- Extraction methods -->
+      <div style="background:white; border:1.5px solid var(--border); border-top:3px solid #475569; border-radius:12px; padding:14px 20px; box-shadow:var(--card-shadow); max-width:560px; width:100%">
+        <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Content Extraction</div>
+        <div style="display:flex; gap:10px">
+
+          <!-- Text -->
+          <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center">
+            <div style="background:#2563eb; border-radius:7px; padding:7px">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="2" y1="4" x2="14" y2="4" stroke="white" stroke-width="1.8" stroke-linecap="round"/><line x1="2" y1="7.5" x2="14" y2="7.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/><line x1="2" y1="11" x2="9" y2="11" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+            <div style="font-size:10px; font-weight:700; color:#1e40af">Text</div>
+            <div style="font-size:8px; color:#475569; line-height:1.3">OCR / cell extraction</div>
+          </div>
+
+          <!-- Images -->
+          <div style="flex:1; background:#fff1f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center">
+            <div style="background:#dc2626; border-radius:7px; padding:7px">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1.5 8s2.5-5 6.5-5 6.5 5 6.5 5-2.5 5-6.5 5-6.5-5-6.5-5z" stroke="white" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="white" stroke-width="1.5"/></svg>
+            </div>
+            <div style="font-size:10px; font-weight:700; color:#b91c1c">Images</div>
+            <div style="font-size:8px; color:#dc2626; font-weight:600; line-height:1.3">GPT-5 Vision</div>
+          </div>
+
+          <!-- Tables -->
+          <div style="flex:1; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center">
+            <div style="background:#ea580c; border-radius:7px; padding:7px">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="13" height="13" rx="1.5" stroke="white" stroke-width="1.5"/><line x1="1.5" y1="6" x2="14.5" y2="6" stroke="white" stroke-width="1"/><line x1="1.5" y1="10" x2="14.5" y2="10" stroke="white" stroke-width="1"/><line x1="6" y1="1.5" x2="6" y2="14.5" stroke="white" stroke-width="1"/><line x1="10" y1="1.5" x2="10" y2="14.5" stroke="white" stroke-width="1"/></svg>
+            </div>
+            <div style="font-size:10px; font-weight:700; color:#c2410c">Tables + Dense Tables</div>
+            <div style="font-size:8px; color:#475569; line-height:1.3">Cell-based / PyMuPDF</div>
+            <div style="font-size:8px; color:#dc2626; font-weight:600; line-height:1.3">+ GPT-5 Vision Correction</div>
+          </div>
+
+        </div>
+
+        <!-- Output section -->
+        <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:10px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Output — Per-Page Content</div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:6px">
+            <!-- Text row -->
+            <div style="display:flex; align-items:center; gap:8px">
+              <span class="badge badge-green" style="font-size:8px; padding:2px 6px; flex-shrink:0; min-width:72px; text-align:center">Text</span>
+              <span style="font-size:8px; color:#475569; line-height:1.4">OCR text extraction</span>
+            </div>
+            <!-- Image row -->
+            <div style="display:flex; align-items:center; gap:8px">
+              <span class="badge badge-red" style="font-size:8px; padding:2px 6px; flex-shrink:0; min-width:72px; text-align:center">Visual</span>
+              <span style="font-size:8px; color:#475569; line-height:1.4">GPT-5 Vision description and placeholder replacement</span>
+            </div>
+            <!-- Table row -->
+            <div style="display:flex; align-items:center; gap:8px">
+              <span class="badge badge-orange" style="font-size:8px; padding:2px 6px; flex-shrink:0; min-width:72px; text-align:center">Table</span>
+              <span style="font-size:8px; color:#475569; line-height:1.4">PyMuPDF extraction + GPT-5 Vision enhancement and placeholder replacement</span>
+            </div>
+            <!-- Divider -->
+            <div style="border-top:1px dashed #e2e8f0; margin:1px 0"></div>
+            <!-- Dense Table row -->
+            <div style="display:flex; align-items:flex-start; gap:8px">
+              <span class="badge badge-amber" style="font-size:8px; padding:2px 6px; flex-shrink:0; min-width:72px; text-align:center; margin-top:1px">Dense Table</span>
+              <span style="font-size:8px; color:#475569; line-height:1.4">Cell-based extraction, GPT-5 Vision description &amp; instructions — content page replaced with query instructions &amp; description + reference to extracted content in <span style="font-family:monospace; font-size:7.5px; background:#fde68a; color:#78350f; padding:1px 3px; border-radius:3px">iris_document_tables</span></span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end extraction card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Enrichment & Output ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Enrichment & Output</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">GPT-5 generates metadata; content structured into three unified output types</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- GPT-5 Enrichment + Unified Output -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+
+      <!-- Container title -->
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">GPT-5 Enrichment</div>
+
+      <!-- GPT-5 enrichment rows -->
+      <div style="display:flex; align-items:stretch; gap:8px">
+
+        <!-- All content -->
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; flex:3">
+          <div style="display:flex; align-items:center; gap:5px; margin-bottom:7px">
+            <svg width="11" height="11" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#2563eb" stroke-width="1.8"/><path d="M10 6v4l2.5 2.5" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span style="font-size:10px; font-weight:700; color:#2563eb">GPT-5 - All Content Metadata</span>
+          </div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap">
+            <span style="background:white; border:1px solid #99f6e4; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#0f766e">Summary</span>
+            <span style="background:white; border:1px solid #99f6e4; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#0f766e">Usage Description</span>
+            <span style="background:white; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#1e40af">Section &amp; Hierarchy</span>
+            <span style="background:white; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#1e40af">Keywords</span>
+            <span style="background:white; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#1e40af">Classifications</span>
+            <span style="background:white; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#1e40af">Entities</span>
+            <span style="background:white; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#1e40af">Embeddings</span>
+          </div>
+        </div>
+
+        <!-- Plus sign -->
+        <div style="display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; font-weight:300; color:#94a3b8">+</div>
+
+        <!-- Table-specific -->
+        <div style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; padding:10px 12px; flex:2">
+          <div style="display:flex; align-items:center; gap:5px; margin-bottom:7px; flex-wrap:wrap">
+            <svg width="11" height="11" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="2" stroke="#d97706" stroke-width="1.8"/><line x1="2" y1="7" x2="18" y2="7" stroke="#d97706" stroke-width="1.2"/><line x1="2" y1="12" x2="18" y2="12" stroke="#d97706" stroke-width="1.2"/><line x1="7" y1="2" x2="7" y2="18" stroke="#d97706" stroke-width="1.2"/></svg>
+            <span style="font-size:10px; font-weight:700; color:#d97706">GPT-5 - Table Content Only Metadata</span>
+            <span style="font-size:8px; color:#d97706; background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 5px; font-weight:600">Optional</span>
+          </div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap">
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Column Headers</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Column Types</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Filterable Columns</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Sample Values</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Row Count</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Table Description</span>
+            <span style="background:white; border:1px solid #fdba74; border-radius:4px; padding:2px 6px; font-size:9px; font-weight:600; color:#c2410c">Size Classification</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:10px">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Unified Outputs — Every Document</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px">
+
+        <div style="background:#f0fdfa; border:1.5px solid var(--accent-teal); border-radius:8px; padding:10px 12px">
+          <div style="font-size:11px; font-weight:700; color:var(--accent-teal); margin-bottom:6px">① Catalog Entry</div>
+          <div style="font-size:9px; color:#374151; line-height:1.5; margin-bottom:8px">Document summary and usage description.</div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px">
+            <span style="background:#ccfbf1; border:1px solid #99f6e4; border-radius:4px; padding:2px 6px; font-size:8px; font-weight:600; color:#0f766e">Metadata</span>
+          </div>
+        </div>
+
+        <div style="background:#eff6ff; border:1.5px solid var(--accent-blue); border-radius:8px; padding:10px 12px">
+          <div style="font-size:11px; font-weight:700; color:var(--accent-blue); margin-bottom:6px">② Content Pages</div>
+          <div style="font-size:9px; color:#374151; line-height:1.5; margin-bottom:8px">One entry per page or sheet.</div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px">
+            <span style="background:#dbeafe; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:8px; font-weight:600; color:#1e40af">Metadata</span>
+            <span style="background:#dbeafe; border:1px solid #bfdbfe; border-radius:4px; padding:2px 6px; font-size:8px; font-weight:600; color:#1e40af">Extracted Content</span>
+          </div>
+        </div>
+
+        <div style="background:#fff7ed; border:1.5px solid var(--accent-orange); border-radius:8px; padding:10px 12px">
+          <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px">
+            <span style="font-size:11px; font-weight:700; color:var(--accent-orange)">③ Table Content</span>
+            <span style="font-size:8px; color:#d97706; background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 5px; font-weight:600">optional</span>
+          </div>
+          <div style="font-size:9px; color:#374151; line-height:1.5; margin-bottom:8px">One entry per detected table.</div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px">
+            <span style="background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:2px 6px; font-size:8px; font-weight:600; color:#92400e">Metadata</span>
+            <span style="background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:2px 6px; font-size:8px; font-weight:600; color:#92400e">Extracted Tables</span>
+          </div>
+        </div>
+
+      </div>
+      </div><!-- end output section -->
+    </div>
+
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Unified Storage ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Unified Storage</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Persisted in three Postgres tables for catalog, content, and tabular retrieval</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- Database -->
+    <div style="background:white; border:1.5px solid var(--border); border-top:3px solid var(--accent-teal); border-radius:12px; padding:14px 20px; box-shadow:var(--card-shadow); max-width:600px; width:100%">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:12px">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><ellipse cx="10" cy="5" rx="8" ry="3" stroke="#0d9488" stroke-width="1.5"/><path d="M2 5v10c0 1.66 3.58 3 8 3s8-1.34 8-3V5" stroke="#0d9488" stroke-width="1.5"/><path d="M2 10c0 1.66 3.58 3 8 3s8-1.34 8-3" stroke="#0d9488" stroke-width="1.5"/></svg>
+        <span style="font-size:12px; font-weight:700; color:var(--accent-teal)">PostgreSQL + pgvector</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+
+        <div style="display:grid; grid-template-columns:150px 1fr; align-items:start; gap:8px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:8px 10px">
+          <div style="font-size:10px; font-weight:700; color:#0f766e; font-family:monospace">iris_document_catalog</div>
+          <div style="font-size:9px; color:#374151; line-height:1.4">One entry per document. Stores summary, usage description, and metadata. Used by the planner to identify and select relevant sources.</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:150px 1fr; align-items:start; gap:8px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 10px">
+          <div style="font-size:10px; font-weight:700; color:#1d4ed8; font-family:monospace">iris_document_content</div>
+          <div style="font-size:9px; color:#374151; line-height:1.4">One entry per page or sheet. Stores extracted text, keywords, and vector embeddings. Retrieved via hybrid semantic + keyword search during research.</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:150px 1fr; align-items:start; gap:8px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; padding:8px 10px">
+          <div style="font-size:10px; font-weight:700; color:#c2410c; font-family:monospace">iris_document_tables</div>
+          <div style="font-size:9px; color:#374151; line-height:1.4">One entry per detected table. Small tables returned in full; large tables loaded as typed rows and filtered via SQL. Used by the agent when numerical or tabular lookups are needed.</div>
+        </div>
+
+      </div>
+    </div><!-- end database card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+  </div><!-- end flow column -->
+</div><!-- end section -->
+</div><!-- end ingestion panel -->
+
+<!-- Research panel -->
+<div id="panel-research" style="display:none">
+<div class="section">
+  <div style="display:flex; flex-direction:column">
+
+    <!-- ── Section Label: Orchestration ── -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">High Level</div>
+    </div>
+
+    <!-- ── Stage: Interaction & Clarification ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Interaction &amp; Clarification</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator converses with the user, asking clarifying questions until all context required to begin research is gathered</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- INTERACTION CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">User Conversation Loop</div>
+      <div style="display:flex; gap:16px; align-items:flex-start">
+
+        <!-- Left: chat exchange -->
+        <div style="flex:1; display:flex; flex-direction:column; gap:7px">
+          <div style="display:flex; align-items:flex-start; gap:7px">
+            <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"Find net interest margin data for Q1 2025 across the supplementary financials"</div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:7px; padding-left:20px">
+            <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">ORCH</div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:7px 10px; font-size:9px; color:#1e40af; flex:1; line-height:1.5">"Which entities should I focus on? (e.g. RBC, TD, CIBC…)"</div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:7px">
+            <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"RBC and TD only"</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end interaction card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Research ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Research</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator prepares inputs for subagents, runs research, then stores output back to the ad-hoc data source</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- RESEARCH CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Research</div>
+
+      <!-- Output section -->
+      <div>
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Output — Research Results</div>
+        <div style="display:flex; gap:12px; align-items:flex-start">
+
+          <!-- Ad-hoc folder -->
+          <div style="flex:0 0 280px; background:#fdf4ff; border:1.5px dashed #d946ef; border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+            <div style="font-weight:700; color:#86198f; font-family:system-ui; font-size:10px; margin-bottom:4px">Ad-hoc</div>
+            <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; color:#c084fc; font-style:italic">No filters</div>
+            <div style="color:#a21caf">📁 ad_hoc/</div>
+            <div style="color:#94a3b8; padding-left:12px">├── user_uploaded_file.pdf</div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">├──</span>
+              <span style="color:#9333ea; font-weight:700">research_net_interest_rbc_td_q1.xlsx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">└──</span>
+              <span style="color:#9333ea; font-weight:700">research_report_to_shareholders.docx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="margin-top:6px; font-family:system-ui; font-size:8px; color:#a21caf; font-style:italic">* per conversation</div>
+          </div>
+
+          <!-- Mock conversation -->
+          <div style="flex:1; display:flex; flex-direction:column; gap:7px">
+
+            <!-- Last user message -->
+            <div style="display:flex; align-items:flex-start; gap:7px">
+              <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+              <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"RBC and TD only"</div>
+            </div>
+
+            <!-- System response -->
+            <div style="display:flex; align-items:flex-start; gap:7px; padding-left:20px">
+              <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">SYS</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:7px 10px; font-size:9px; color:#1e40af; flex:1; line-height:1.5">
+                <div style="margin-bottom:8px">"Here is the research across RBC and TD supplementary financials for Q1 2025. Net interest margin figures have been extracted from tabular data and summarised below…"</div>
+                <div style="color:#6b7280; font-style:italic; margin-bottom:10px">[ … ]</div>
+                <!-- Attachments -->
+                <div style="display:flex; gap:6px; flex-wrap:wrap">
+                  <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #6ee7b7; border-radius:6px; padding:4px 8px">
+                    <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#059669"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#047857"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">XLSX</text><rect x="10" y="17" width="18" height="12" rx="1" stroke="rgba(255,255,255,0.5)" stroke-width="1" fill="none"/><line x1="16" y1="17" x2="16" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="22" y1="17" x2="22" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="21" x2="28" y2="21" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="25" x2="28" y2="25" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/></svg>
+                    <span style="font-family:monospace; font-size:8px; font-weight:700; color:#065f46">research_net_interest_rbc_td_q1.xlsx</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #bfdbfe; border-radius:6px; padding:4px 8px">
+                    <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+                    <span style="font-family:monospace; font-size:8px; font-weight:700; color:#1e40af">research_report_to_shareholders.docx</span>
+                  </div>
+                </div>
+                <div style="margin-top:7px; display:flex; align-items:center; gap:4px">
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="11" x2="10" y2="11" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <span style="font-size:7.5px; color:#9333ea; font-style:italic">outputs stored in ad_hoc/ — per conversation</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end research card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- ── Section Divider: High Level → Technical ── -->
+    <div style="margin:20px 0 16px; border-top:1.5px solid var(--border); padding-top:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">Technical</div>
+    </div>
+
+    <!-- ── Stage: Orchestrator Loop ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Orchestrator Loop</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator receives the conversation, runs general clarification with user to check for anything missing, then calls the research tool with the statement, conversation, and global flags</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- ORCHESTRATOR LOOP CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Orchestrator Loop</div>
+
+      <div style="display:flex; align-items:stretch; gap:0">
+
+        <!-- Conversation tile -->
+        <div style="flex:1; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:9px 11px">
+          <div style="font-size:9px; font-weight:700; color:#374151; margin-bottom:7px">Conversation</div>
+          <div style="display:flex; align-items:flex-start; gap:5px">
+            <div style="background:#f1f5f9; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#475569; flex-shrink:0; margin-top:1px">USER</div>
+            <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; color:#374151; line-height:1.4">"What was the net interest margin for the big 5 banks in Q1 2025?"</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="display:flex; align-items:center; padding:0 10px; color:#94a3b8; font-size:16px; flex-shrink:0">→</div>
+
+        <!-- Clarification tile -->
+        <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:9px; font-weight:700; color:#1e40af; margin-bottom:7px">Clarification</div>
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <div style="display:flex; align-items:flex-start; gap:5px">
+              <div style="background:#dbeafe; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#1d4ed8; flex-shrink:0; margin-top:1px">ORCH</div>
+              <div style="background:white; border:1px solid #bfdbfe; border-radius:6px; padding:5px 8px; font-size:7.5px; color:#1e40af; line-height:1.4">"Which entities should I focus on?"</div>
+            </div>
+            <div style="display:flex; align-items:flex-start; gap:5px">
+              <div style="background:#f1f5f9; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#475569; flex-shrink:0; margin-top:1px">USER</div>
+              <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; color:#374151; line-height:1.4">"RBC and TD only"</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="display:flex; align-items:center; padding:0 10px; color:#94a3b8; font-size:16px; flex-shrink:0">→</div>
+
+        <!-- Research tool call tile -->
+        <div style="flex:1; background:#1e293b; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px">Tool Call</div>
+          <div style="font-family:monospace; font-size:9px; font-weight:700; color:#38bdf8; margin-bottom:8px">research_tool</div>
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">research_statement</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">"net interest margin Q1 2025…"</span>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">conversation</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">[ … ]</span>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">deep_research</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">false</span>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">db_wide</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">false</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end orchestrator loop card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Data Source Planning ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Data Source Planning</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Select relevant data sources and resolve their required filter parameters from the conversation. May trigger targeted clarification back to the user if a database's required filters cannot be inferred</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- DATA SOURCE PLANNING CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Data Source Planning</div>
+
+      <!-- Inputs row -->
+      <div style="display:flex; gap:10px; align-items:stretch">
+
+        <!-- DB Registry -->
+        <div style="flex:1; background:#f0fdfa; border:1px solid #5eead4; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#0f766e; margin-bottom:3px">Database Registry</div>
+          <div style="font-family:monospace; font-size:8px; color:#0d9488; margin-bottom:4px">iris_database_registry</div>
+          <div style="font-size:7.5px; color:#475569; line-height:1.4">Available data sources, descriptions and usage loaded from Postgres</div>
+        </div>
+
+        <!-- + -->
+        <div style="display:flex; align-items:center; color:#94a3b8; font-size:16px; font-weight:300; flex-shrink:0">+</div>
+
+        <!-- Document Catalog + Chunks -->
+        <div style="flex:2; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#1e40af; margin-bottom:5px">Similarity Search</div>
+          <div style="display:flex; gap:8px">
+            <div style="flex:1">
+              <div style="font-family:monospace; font-size:8px; color:#2563eb; margin-bottom:3px">iris_document_catalog</div>
+              <div style="font-size:7.5px; color:#475569; line-height:1.4">Top 3 docs per data source by summary similarity</div>
+            </div>
+            <div style="width:1px; background:#bfdbfe; flex-shrink:0"></div>
+            <div style="flex:1">
+              <div style="font-family:monospace; font-size:8px; color:#2563eb; margin-bottom:3px">iris_document_chunks</div>
+              <div style="font-size:7.5px; color:#475569; line-height:1.4">Top 5 chunks overall across all sources by content similarity</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Selected Data Sources</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+
+          <!-- supplementary_financials -->
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px">
+            <div style="font-family:monospace; font-size:8px; font-weight:700; color:#0f766e; margin-bottom:7px">📁 supplementary_financials</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-family:monospace; font-size:7.5px; color:#6d28d9; flex-shrink:0">period</span>
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0">→</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#059669">"2025_Q1"</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-family:monospace; font-size:7.5px; color:#6d28d9; flex-shrink:0">entity</span>
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0">→</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#059669">["RBC", "TD"]</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- report_to_shareholders -->
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px">
+            <div style="font-family:monospace; font-size:8px; font-weight:700; color:#0f766e; margin-bottom:7px">📁 report_to_shareholders</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-family:monospace; font-size:7.5px; color:#6d28d9; flex-shrink:0">period</span>
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0">→</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#059669">"2025_Q1"</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-family:monospace; font-size:7.5px; color:#6d28d9; flex-shrink:0">entity</span>
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0">→</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#059669">["RBC", "TD"]</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end data source planning card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Document Selection ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Document Selection</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Enrich the filtered catalog with top chunk per file, then GPT-5 classifies each document for how it should be researched</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- DOCUMENT SELECTION CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Document Selection</div>
+
+      <!-- Input tiles -->
+      <div style="display:flex; gap:10px; align-items:stretch">
+
+        <!-- iris_document_catalog -->
+        <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#1e40af; margin-bottom:3px">Document Catalog</div>
+          <div style="font-family:monospace; font-size:8px; color:#2563eb; margin-bottom:4px">iris_document_catalog</div>
+          <div style="font-size:7.5px; color:#475569; line-height:1.4">Per-file summary, description and metadata for all documents in the filtered data source</div>
+        </div>
+
+        <!-- + -->
+        <div style="display:flex; align-items:center; color:#94a3b8; font-size:16px; font-weight:300; flex-shrink:0">+</div>
+
+        <!-- iris_document_chunks -->
+        <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#1e40af; margin-bottom:3px">Document Chunks</div>
+          <div style="font-family:monospace; font-size:8px; color:#2563eb; margin-bottom:4px">iris_document_chunks</div>
+          <div style="font-size:7.5px; color:#475569; line-height:1.4">Top 1 chunk per file based on research statement similarity, appended to each catalog entry</div>
+        </div>
+
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Per-File Classification</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+
+          <!-- supplementary_financials -->
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px">
+            <div style="font-family:monospace; font-size:8px; font-weight:700; color:#0f766e; margin-bottom:7px">📁 supplementary_financials</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">1</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">supp_rbc_q1_2025.xlsx</span>
+                <span style="background:#f0fdf4; border:1px solid #86efac; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#15803d; flex-shrink:0; white-space:nowrap">Research</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">2</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">supp_td_q1_2025.xlsx</span>
+                <span style="background:#f0fdf4; border:1px solid #86efac; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#15803d; flex-shrink:0; white-space:nowrap">Research</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">3</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">supp_rbc_q4_2024.xlsx</span>
+                <span style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#64748b; flex-shrink:0; white-space:nowrap">Irrelevant</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- report_to_shareholders -->
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px">
+            <div style="font-family:monospace; font-size:8px; font-weight:700; color:#0f766e; margin-bottom:7px">📁 report_to_shareholders</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">1</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">rts_rbc_2024_annual.pdf</span>
+                <span style="background:#fff7ed; border:1px solid #fdba74; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#c2410c; flex-shrink:0; white-space:nowrap">Deep Research</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">2</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">rts_td_2024_annual.pdf</span>
+                <span style="background:#fff7ed; border:1px solid #fdba74; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#c2410c; flex-shrink:0; white-space:nowrap">Deep Research</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font-size:7.5px; color:#94a3b8; flex-shrink:0; width:10px">3</span>
+                <span style="font-family:monospace; font-size:7.5px; color:#374151; flex:1">rts_cibc_2024_annual.pdf</span>
+                <span style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#64748b; flex-shrink:0; white-space:nowrap">Irrelevant</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end document selection card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Research Execution ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Research Execution</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Each document is researched according to its classification — irrelevant skipped, research from metadata, or deep research for full content</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- RESEARCH EXECUTION CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Research Execution</div>
+
+      <!-- Two path columns -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; margin-bottom:12px">
+
+        <!-- Research -->
+        <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:9px 11px; display:flex; flex-direction:column; gap:6px">
+          <div style="font-size:9px; font-weight:700; color:#15803d">Research</div>
+          <!-- catalog + chunks side by side -->
+          <div style="display:flex; gap:6px; align-items:stretch">
+            <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:5px 7px">
+              <div style="font-size:7px; font-weight:700; color:#1e40af; margin-bottom:2px">Document Catalog</div>
+              <div style="font-family:monospace; font-size:6.5px; color:#2563eb">iris_document_catalog</div>
+            </div>
+            <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:5px 7px">
+              <div style="font-size:7px; font-weight:700; color:#1e40af; margin-bottom:2px">Document Chunks</div>
+              <div style="font-family:monospace; font-size:6.5px; color:#2563eb">iris_document_chunks</div>
+            </div>
+          </div>
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#92400e">Optional — Dense Table Research</div>
+        </div>
+
+        <!-- Deep Research -->
+        <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:8px; padding:9px 11px; display:flex; flex-direction:column; gap:6px">
+          <div style="font-size:9px; font-weight:700; color:#c2410c">Deep Research</div>
+          <div style="background:#fed7aa; border:1px solid #fdba74; border-radius:6px; padding:5px 7px">
+            <div style="font-size:7px; font-weight:700; color:#c2410c; margin-bottom:3px">Full Content Research Loop</div>
+            <div style="font-family:monospace; font-size:6.5px; color:#92400e">iris_document_chunks</div>
+          </div>
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#92400e">Optional — Dense Table Research</div>
+        </div>
+
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Per-File Research</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:9px 11px">
+          <div style="font-family:monospace; font-size:8px; font-weight:700; color:#0f766e; margin-bottom:8px">📄 rts_rbc_2024_annual.pdf</div>
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <div>
+              <div style="font-size:7.5px; font-weight:700; color:#374151; margin-bottom:2px">file_research</div>
+              <div style="background:white; border:1px solid var(--border); border-radius:5px; padding:5px 8px; font-size:7.5px; color:#475569; line-height:1.5; font-style:italic">"Net interest margin for RBC in Q1 2025 was 2.14%, reflecting a 12bps increase from Q4 2024. The report attributes this to…  [ … ]"</div>
+            </div>
+            <div>
+              <div style="font-size:7.5px; font-weight:700; color:#374151; margin-bottom:2px">table_research_summary</div>
+              <div style="background:white; border:1px solid var(--border); border-radius:5px; padding:5px 8px; font-size:7.5px; color:#475569; line-height:1.5; font-style:italic">"NIM table on p.34 shows quarterly breakdown across business lines for RBC and TD, Q1–Q4 2024 and Q1 2025…  [ … ]"</div>
+            </div>
+            <div>
+              <div style="font-size:7.5px; font-weight:700; color:#374151; margin-bottom:2px">table_research_data</div>
+              <div style="background:white; border:1px solid var(--border); border-radius:5px; padding:5px 8px; font-family:monospace; font-size:7px; color:#475569; line-height:1.7">[&#123; period: "Q1 2025", entity: "RBC", nim: "2.14%" &#125;, &#123; period: "Q1 2025", entity: "TD", nim: "1.98%" &#125;,  … ]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- end research execution card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Response Synthesis ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Response Synthesis</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Aggregate all per-file research outputs into a synthesized summary response. Full research document saved to ad-hoc folder. Table data included as xlsx if dense table research was performed</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- RESPONSE SYNTHESIS CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Response Synthesis</div>
+
+      <!-- Input row -->
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 11px; margin-bottom:12px">
+        <div style="font-size:8px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px">Input</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap">
+          <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:7.5px; color:#374151">research_statement</div>
+          <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:7.5px; color:#374151">conversation</div>
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:4px 8px; font-size:7.5px; color:#15803d; font-style:italic">per-file research outputs [ … × N files ]</div>
+        </div>
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Conversation Response</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+
+        <!-- Mock SYS response -->
+        <div style="display:flex; align-items:flex-start; gap:7px; margin-bottom:10px">
+          <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">SYS</div>
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 11px; font-size:8.5px; color:#1e40af; flex:1; line-height:1.5">
+            <div style="margin-bottom:6px">"Here is a summary of net interest margin across RBC and TD supplementary financials for Q1 2025. RBC reported a NIM of 2.14% (up 12bps from Q4 2024) while TD reported 1.98%…"</div>
+            <div style="color:#6b7280; font-style:italic; margin-bottom:10px">[ … ]</div>
+            <!-- Attachments -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap">
+              <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #bfdbfe; border-radius:6px; padding:4px 8px">
+                <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+                <span style="font-family:monospace; font-size:8px; font-weight:700; color:#1e40af">research_net_interest_rbc_td_q1.docx</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #fde68a; border-radius:6px; padding:4px 8px">
+                <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#d97706"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#b45309"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">XLSX</text><rect x="10" y="17" width="18" height="12" rx="1" stroke="rgba(255,255,255,0.5)" stroke-width="1" fill="none"/><line x1="16" y1="17" x2="16" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="22" y1="17" x2="22" y2="29" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="21" x2="28" y2="21" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/><line x1="10" y1="25" x2="28" y2="25" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/></svg>
+                <span style="font-family:monospace; font-size:8px; font-weight:700; color:#92400e">research_net_interest_rbc_td_q1.xlsx</span>
+                <span style="background:#fffbeb; border:1px solid #fde68a; border-radius:3px; padding:1px 5px; font-size:7px; font-weight:700; color:#92400e; white-space:nowrap">if dense table research</span>
+              </div>
+            </div>
+            <div style="margin-top:7px; display:flex; align-items:center; gap:4px">
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="11" x2="10" y2="11" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span style="font-size:7.5px; color:#9333ea; font-style:italic">outputs stored in ad_hoc/ — per conversation</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end response synthesis card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+  </div><!-- end flex column -->
+</div><!-- end section -->
+</div>
+
+<!-- Report panel -->
+<div id="panel-report" style="display:none">
+<div class="section">
+  <div style="display:flex; flex-direction:column">
+
+    <!-- ── Section Label: High Level ── -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">High Level</div>
+    </div>
+
+    <!-- ── Stage: Interaction & Clarification ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Interaction &amp; Clarification</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator converses with the user, clarifying scope or confirming an initial draft should be prepared</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- INTERACTION CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">User Conversation Loop</div>
+      <div style="display:flex; gap:16px; align-items:flex-start">
+
+        <!-- Chat exchange -->
+        <div style="flex:1; display:flex; flex-direction:column; gap:7px">
+          <div style="display:flex; align-items:flex-start; gap:7px">
+            <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"Can you prepare a report on RBC and TD's Q1 2025 earnings release?"</div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:7px; padding-left:20px">
+            <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">ORCH</div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:7px 10px; font-size:9px; color:#1e40af; flex:1; line-height:1.5">"What areas should the report focus on, or should I prepare an initial draft based on the available content?"</div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:7px">
+            <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"Prepare an initial draft"</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end interaction card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Reports ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Reports</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator generates the report and stores it in the ad-hoc folder, then returns the document as an attachment</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- REPORTS CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Reports</div>
+
+      <div>
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Output — Report</div>
+        <div style="display:flex; gap:12px; align-items:flex-start">
+
+          <!-- Ad-hoc folder -->
+          <div style="flex:0 0 320px; background:#fdf4ff; border:1.5px dashed #d946ef; border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+            <div style="font-weight:700; color:#86198f; font-family:system-ui; font-size:10px; margin-bottom:4px">Ad-hoc</div>
+            <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; color:#c084fc; font-style:italic">No filters</div>
+            <div style="color:#a21caf">📁 ad_hoc/</div>
+            <div style="color:#94a3b8; padding-left:12px">├── user_uploaded_file.pdf</div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">├──</span>
+              <span style="color:#9333ea; font-weight:700">research_rbc_td_earnings_overview.docx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">├──</span>
+              <span style="color:#9333ea; font-weight:700">research_rbc_td_capital_ratios.xlsx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">└──</span>
+              <span style="color:#9333ea; font-weight:700">report_rbc_td_earnings_q1_2025.docx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="margin-top:6px; font-family:system-ui; font-size:8px; color:#a21caf; font-style:italic">* per conversation</div>
+          </div>
+
+          <!-- Mock conversation -->
+          <div style="flex:1; display:flex; flex-direction:column; gap:7px">
+
+            <div style="display:flex; align-items:flex-start; gap:7px">
+              <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+              <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"Prepare an initial draft"</div>
+            </div>
+
+            <div style="display:flex; align-items:flex-start; gap:7px; padding-left:20px">
+              <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">SYS</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:7px 10px; font-size:9px; color:#1e40af; flex:1; line-height:1.5">
+                <div style="margin-bottom:8px">"Here is an initial draft report on RBC and TD's Q1 2025 earnings release covering key highlights across net interest margin, revenue, and capital ratios…"</div>
+                <div style="color:#6b7280; font-style:italic; margin-bottom:10px">[ … ]</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap">
+                  <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #bfdbfe; border-radius:6px; padding:4px 8px">
+                    <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+                    <span style="font-family:monospace; font-size:8px; font-weight:700; color:#1e40af">report_rbc_td_earnings_q1_2025.docx</span>
+                  </div>
+                </div>
+                <div style="margin-top:7px; display:flex; align-items:center; gap:4px">
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="11" x2="10" y2="11" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <span style="font-size:7.5px; color:#9333ea; font-style:italic">outputs stored in ad_hoc/ — per conversation</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end reports card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- ── Section Divider: High Level → Technical ── -->
+    <div style="margin:20px 0 16px; border-top:1.5px solid var(--border); padding-top:16px">
+      <div style="font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text)">Technical</div>
+    </div>
+
+    <!-- ── Stage: Orchestrator Loop ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Orchestrator Loop</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Orchestrator receives the conversation, runs general clarification with user to check for anything missing, then calls the report tool with the statement and conversation</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- ORCHESTRATOR LOOP CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Orchestrator Loop</div>
+
+      <div style="display:flex; align-items:stretch; gap:0">
+
+        <!-- Conversation tile -->
+        <div style="flex:1; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:9px 11px">
+          <div style="font-size:9px; font-weight:700; color:#374151; margin-bottom:7px">Conversation</div>
+          <div style="display:flex; align-items:flex-start; gap:5px">
+            <div style="background:#f1f5f9; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#475569; flex-shrink:0; margin-top:1px">USER</div>
+            <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; color:#374151; line-height:1.4">"Can you prepare a report on RBC and TD's Q1 2025 earnings release?"</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="display:flex; align-items:center; padding:0 10px; color:#94a3b8; font-size:16px; flex-shrink:0">→</div>
+
+        <!-- Clarification tile -->
+        <div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:9px; font-weight:700; color:#1e40af; margin-bottom:7px">Clarification</div>
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <div style="display:flex; align-items:flex-start; gap:5px">
+              <div style="background:#dbeafe; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#1d4ed8; flex-shrink:0; margin-top:1px">ORCH</div>
+              <div style="background:white; border:1px solid #bfdbfe; border-radius:6px; padding:5px 8px; font-size:7.5px; color:#1e40af; line-height:1.4">"What areas should the report focus on, or should I prepare an initial draft?"</div>
+            </div>
+            <div style="display:flex; align-items:flex-start; gap:5px">
+              <div style="background:#f1f5f9; border-radius:4px; padding:2px 5px; font-size:7px; font-weight:700; color:#475569; flex-shrink:0; margin-top:1px">USER</div>
+              <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; color:#374151; line-height:1.4">"Prepare an initial draft"</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="display:flex; align-items:center; padding:0 10px; color:#94a3b8; font-size:16px; flex-shrink:0">→</div>
+
+        <!-- Report tool call tile -->
+        <div style="flex:1; background:#1e293b; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px">Tool Call</div>
+          <div style="font-family:monospace; font-size:9px; font-weight:700; color:#38bdf8; margin-bottom:8px">report_tool</div>
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">report_statement</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">"RBC and TD Q1 2025 earnings…"</span>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:5px">
+              <span style="font-family:monospace; font-size:7px; color:#c084fc; flex-shrink:0">conversation</span>
+              <span style="font-size:7px; color:#475569; flex-shrink:0">→</span>
+              <span style="font-family:monospace; font-size:7px; color:#86efac">[ … ]</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end orchestrator loop card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Research Gap Filling ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Research Gap Filling</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Compare report statement against existing ad-hoc research outputs each iteration, identify coverage gaps, generate sub-queries, and run each through the research subagent — repeated up to a maximum number of iterations</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- RESEARCH GAP FILLING CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+
+      <!-- Card header with loop badge -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
+        <div style="font-size:12px; font-weight:700; color:#1e293b">Research Gap Filling</div>
+        <div style="display:flex; align-items:center; gap:4px; background:#fefce8; border:1px solid #fde047; border-radius:4px; padding:2px 7px; flex-shrink:0">
+          <svg width="9" height="9" viewBox="0 0 20 20" fill="none"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 0v4m0 8v2M6 10H4m12 0h-2" stroke="#a16207" stroke-width="1.8" stroke-linecap="round"/><path d="M10 6a4 4 0 014 4" stroke="#a16207" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span style="font-size:8px; font-weight:700; color:#a16207">Loop — max N iterations</span>
+        </div>
+      </div>
+
+      <!-- Loop body -->
+      <div style="border:1.5px solid #fde047; border-radius:10px; background:#fefce8; padding:12px 14px; display:flex; flex-direction:column; gap:10px">
+
+        <!-- Step 1: Gap Analysis -->
+        <div style="display:flex; gap:8px; align-items:stretch">
+          <div style="flex-shrink:0; width:18px; display:flex; flex-direction:column; align-items:center; padding-top:2px">
+            <div style="width:18px; height:18px; border-radius:50%; background:#a16207; color:white; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0">1</div>
+            <div style="flex:1; width:1.5px; background:#fde047; margin-top:3px"></div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:8.5px; font-weight:700; color:#713f12; margin-bottom:5px">Gap Analysis</div>
+            <div style="display:flex; gap:6px; align-items:stretch">
+              <div style="flex:1; background:white; border:1px solid var(--border); border-radius:6px; padding:6px 8px">
+                <div style="font-size:7px; font-weight:700; color:#6b7280; margin-bottom:3px">Inputs</div>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <div style="font-size:7.5px; color:#374151">report_statement</div>
+                  <div style="font-size:7.5px; color:#374151">existing ad-hoc research outputs</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; color:#94a3b8; font-size:12px; flex-shrink:0">→</div>
+              <div style="flex:1; background:#fdf4ff; border:1px solid #e9d5ff; border-radius:6px; padding:6px 8px">
+                <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px">
+                  <div style="font-size:7px; font-weight:700; color:#7e22ce">Output</div>
+                  <div style="display:flex; align-items:center; gap:4px; background:#f3e8ff; border:1px solid #d8b4fe; border-radius:4px; padding:1px 5px; flex-shrink:0">
+                    <svg width="8" height="8" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+                    <span style="font-size:7px; font-weight:700; color:#dc2626">GPT-5</span>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <div style="font-size:7.5px; color:#7e22ce; font-style:italic">coverage gaps identified</div>
+                  <div style="font-size:7.5px; color:#7e22ce; font-style:italic">research sub-queries [ × N gaps ]</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Research Subagent -->
+        <div style="display:flex; gap:8px; align-items:stretch">
+          <div style="flex-shrink:0; width:18px; display:flex; flex-direction:column; align-items:center; padding-top:2px">
+            <div style="width:18px; height:18px; border-radius:50%; background:#a16207; color:white; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0">2</div>
+            <div style="flex:1; width:1.5px; background:#fde047; margin-top:3px"></div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:8.5px; font-weight:700; color:#713f12; margin-bottom:5px">Research Subagent</div>
+            <div style="display:flex; gap:6px; align-items:stretch">
+              <div style="flex:1; background:white; border:1px solid var(--border); border-radius:6px; padding:6px 8px">
+                <div style="font-size:7px; font-weight:700; color:#6b7280; margin-bottom:3px">Input</div>
+                <div style="font-size:7.5px; color:#374151">research sub-queries</div>
+              </div>
+              <div style="display:flex; align-items:center; color:#94a3b8; font-size:12px; flex-shrink:0">→</div>
+              <div style="flex:1; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:6px 8px">
+                <div style="font-size:7px; font-weight:700; color:#15803d; margin-bottom:3px">Output</div>
+                <div style="font-size:7.5px; color:#15803d; font-style:italic">research outputs → stored in ad_hoc/</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Coverage Check -->
+        <div style="display:flex; gap:8px; align-items:flex-start">
+          <div style="flex-shrink:0; width:18px; display:flex; align-items:center; justify-content:center; padding-top:2px">
+            <div style="width:18px; height:18px; border-radius:50%; background:#a16207; color:white; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center">3</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:8.5px; font-weight:700; color:#713f12; margin-bottom:5px">Coverage Check</div>
+            <div style="display:flex; gap:6px; align-items:center">
+              <div style="background:white; border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:7.5px; color:#374151; flex:1">Re-evaluate report_statement against updated ad-hoc research</div>
+              <div style="display:flex; gap:5px; flex-shrink:0">
+                <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:5px; padding:4px 8px; font-size:7.5px; font-weight:700; color:#15803d">No gaps → proceed</div>
+                <div style="background:#fefce8; border:1px solid #fde047; border-radius:5px; padding:4px 8px; font-size:7.5px; font-weight:700; color:#a16207">Gaps remain → repeat ↺</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end research gap filling card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Report Template ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Report Template</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Check for an existing template to update from user instructions, or create a new one. Defines sections, subsections, and per-section writing instructions — no content, just the framework used by downstream section generation</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- REPORT TEMPLATE CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Report Template</div>
+
+      <!-- Two-path decision -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
+
+        <!-- Path A: existing template -->
+        <div style="background:#f8fafc; border:1.5px solid var(--border); border-radius:8px; padding:9px 11px">
+          <div style="font-size:8.5px; font-weight:700; color:#374151; margin-bottom:6px">Existing Template</div>
+          <div style="font-size:7.5px; color:#6b7280; line-height:1.5; margin-bottom:6px">User has requested edits to the report — update existing sections, subsections, or instructions based on new instructions</div>
+          <div style="display:flex; gap:5px">
+            <div style="background:white; border:1px solid var(--border); border-radius:5px; padding:3px 7px; font-size:7.5px; color:#374151">existing template</div>
+            <div style="background:white; border:1px solid var(--border); border-radius:5px; padding:3px 7px; font-size:7.5px; color:#374151">user instructions</div>
+          </div>
+        </div>
+
+        <!-- Path B: new template -->
+        <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:8px; padding:9px 11px">
+          <div style="font-size:8.5px; font-weight:700; color:#1e40af; margin-bottom:6px">New Template</div>
+          <div style="font-size:7.5px; color:#3b82f6; line-height:1.5; margin-bottom:6px">Agent drafts a template from scratch based on the report statement, conversation context, and available research</div>
+          <div style="display:flex; gap:5px">
+            <div style="background:white; border:1px solid #bfdbfe; border-radius:5px; padding:3px 7px; font-size:7.5px; color:#1e40af">report_statement</div>
+            <div style="background:white; border:1px solid #bfdbfe; border-radius:5px; padding:3px 7px; font-size:7.5px; color:#1e40af">conversation</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Output section -->
+      <div style="border-top:1px solid var(--border); padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Template</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+
+        <!-- Template mock-up -->
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:7.5px; line-height:1.6; color:#374151">
+          <div style="display:flex; flex-direction:column; gap:6px">
+
+            <div>
+              <div style="font-weight:700; color:#1e293b; margin-bottom:2px">1. Executive Summary</div>
+              <div style="color:#6b7280; font-style:italic; padding-left:10px; font-size:7px">Instruction: Summarise key earnings highlights for RBC and TD in 3–4 sentences. Draw from file_research across all sources.</div>
+            </div>
+
+            <div>
+              <div style="font-weight:700; color:#1e293b; margin-bottom:2px">2. Net Interest Margin</div>
+              <div style="color:#6b7280; font-style:italic; padding-left:10px; font-size:7px">Instruction: Report NIM figures per entity and quarter. Include table_research_data if available. Highlight any QoQ movement.</div>
+              <div style="padding-left:10px; margin-top:3px">
+                <div style="color:#475569; margin-bottom:1px">2.1 RBC</div>
+                <div style="color:#475569">2.2 TD</div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-weight:700; color:#1e293b; margin-bottom:2px">3. Capital Ratios</div>
+              <div style="color:#6b7280; font-style:italic; padding-left:10px; font-size:7px">Instruction: Cover CET1 and Tier 1 ratios from supplementary financials. Note any regulatory commentary.</div>
+              <div style="padding-left:10px; margin-top:3px">
+                <div style="color:#475569; margin-bottom:1px">3.1 RBC</div>
+                <div style="color:#475569">3.2 TD</div>
+              </div>
+            </div>
+
+            <div style="color:#94a3b8; font-style:italic; font-size:7px">[ … additional sections ]</div>
+
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end report template card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Research Assignment ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Research Assignment</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Map each template section to the research outputs needed to write it, based on the section instructions and available ad-hoc research</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- RESEARCH ASSIGNMENT CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Research Assignment</div>
+
+      <!-- Inputs row -->
+      <div style="display:flex; align-items:stretch; gap:8px; margin-bottom:12px">
+        <div style="flex:1; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:9px 12px">
+          <div style="font-size:8px; font-weight:700; color:#374151; margin-bottom:4px">Report Template</div>
+          <div style="font-size:7.5px; color:#6b7280; line-height:1.5">Sections, subsections, and per-section writing instructions</div>
+        </div>
+        <div style="display:flex; align-items:center; font-size:16px; color:#94a3b8; font-weight:300; flex-shrink:0">+</div>
+        <div style="flex:1; background:#fdf4ff; border:1px solid #e9d5ff; border-radius:8px; padding:9px 12px">
+          <div style="font-size:8px; font-weight:700; color:#7e22ce; margin-bottom:4px">Ad-hoc Research Outputs</div>
+          <div style="font-size:7.5px; color:#9333ea; line-height:1.5">All research files stored in the ad-hoc folder for this conversation</div>
+        </div>
+      </div>
+
+      <!-- Output: mapping -->
+      <div style="border-top:1px solid var(--border); padding-top:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted)">Output — Section → Research Mapping</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:8px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:5px">
+
+          <!-- Section row -->
+          <div style="display:grid; grid-template-columns:180px 1fr; gap:8px; align-items:center">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#1e293b">1. Executive Summary</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_capital_ratios.xlsx</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:180px 1fr; gap:8px; align-items:center">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#1e293b">2. Net Interest Margin</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:180px 1fr; gap:8px; align-items:center">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#1e293b">2.1 RBC</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_capital_ratios.xlsx</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:180px 1fr; gap:8px; align-items:center">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#1e293b">2.2 TD</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_capital_ratios.xlsx</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:180px 1fr; gap:8px; align-items:center">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:7.5px; font-weight:700; color:#1e293b">3. Capital Ratios</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-family:monospace; font-size:7px; color:#1e40af">research_rbc_td_capital_ratios.xlsx</div>
+            </div>
+          </div>
+
+          <div style="color:#94a3b8; font-size:7px; font-style:italic; padding-left:2px">[ … additional sections ]</div>
+
+        </div>
+      </div>
+
+    </div><!-- end research assignment card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Section Generation ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Section Generation</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Write each section in series — the completed content from the prior section is passed as context so the report flows together naturally</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- SECTION GENERATION CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Section Generation</div>
+
+      <!-- Column headers -->
+      <div style="display:grid; grid-template-columns:220px 1fr; gap:8px; margin-bottom:6px">
+        <div style="font-size:8px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em; padding-left:2px">Section + Research</div>
+        <div style="display:flex; align-items:center; gap:6px; padding-left:2px">
+          <div style="font-size:8px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em">Output — Written Content</div>
+          <div style="display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; flex-shrink:0">
+            <svg width="8" height="8" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#dc2626" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#dc2626"/></svg>
+            <span style="font-size:7px; font-weight:700; color:#dc2626">GPT-5</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section tiles in series -->
+      <div style="display:flex; flex-direction:column; gap:6px">
+
+        <!-- Section 1 -->
+        <div style="display:grid; grid-template-columns:220px 1fr; gap:8px; align-items:stretch">
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; justify-content:center">
+            <div style="font-size:8px; font-weight:700; color:#1e293b; margin-bottom:3px">1. Executive Summary</div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; font-family:monospace; font-size:6.5px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; font-family:monospace; font-size:6.5px; color:#1e40af">research_rbc_td_capital_ratios.xlsx</div>
+            </div>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:8px 10px">
+            <div style="font-size:7.5px; color:#15803d; font-style:italic; line-height:1.5">"RBC and TD delivered solid Q1 2025 results. RBC reported NIM of 2.14% (+12bps QoQ) while TD reported 1.98%…  [ … ]"</div>
+          </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div style="display:grid; grid-template-columns:220px 1fr; gap:8px; align-items:stretch">
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; justify-content:center">
+            <div style="font-size:8px; font-weight:700; color:#1e293b; margin-bottom:3px">2. Net Interest Margin</div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:5px">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; font-family:monospace; font-size:6.5px; color:#1e40af">research_rbc_td_earnings_overview.docx</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px">
+              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span style="font-size:6.5px; color:#94a3b8; font-style:italic">+ prior section content</span>
+            </div>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:8px 10px">
+            <div style="font-size:7.5px; color:#15803d; font-style:italic; line-height:1.5">"Building on the summary above, net interest margin trends reflect… RBC's NIM expanded driven by…  [ … ]"</div>
+          </div>
+        </div>
+
+        <!-- Remaining sections indicator -->
+        <div style="display:flex; align-items:center; gap:8px; padding:4px 0 0 6px">
+          <div style="width:1.5px; height:14px; background:var(--border); margin-left:5px"></div>
+          <div style="font-size:7.5px; color:#94a3b8; font-style:italic">[ … sections 2.1 RBC, 2.2 TD, 3. Capital Ratios, … written in series ]</div>
+        </div>
+
+      </div>
+    </div><!-- end section generation card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+    <!-- arrow -->
+    <div style="display:grid; grid-template-columns:170px 1fr">
+      <div></div><div class="flow-arrow">▼</div>
+    </div>
+
+    <!-- ── Stage: Final Delivery ── -->
+    <div style="display:grid; grid-template-columns:170px 1fr; align-items:center">
+      <div style="padding-right:16px; align-self:stretch; display:flex; align-items:center">
+        <div style="border-right:2px solid #e2e8f0; padding:8px 14px 8px 0; width:100%">
+          <div style="font-size:10px; font-weight:700; color:#374151; margin-bottom:3px">Final Delivery</div>
+          <div style="font-size:8px; color:#6b7280; line-height:1.4">Assembled report saved to the ad-hoc folder and returned to the user as an attachment</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center">
+    <!-- FINAL DELIVERY CARD -->
+    <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; max-width:860px; width:100%; box-shadow:var(--card-shadow)">
+      <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:12px">Reports</div>
+
+      <div>
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px">Output — Report</div>
+        <div style="display:flex; gap:12px; align-items:flex-start">
+
+          <!-- Ad-hoc folder -->
+          <div style="flex:0 0 320px; background:#fdf4ff; border:1.5px dashed #d946ef; border-radius:8px; padding:10px 12px; font-family:monospace; font-size:9px; line-height:1.7; color:#475569">
+            <div style="font-weight:700; color:#86198f; font-family:system-ui; font-size:10px; margin-bottom:4px">Ad-hoc</div>
+            <div style="margin-bottom:6px; font-family:system-ui; font-size:9px; color:#c084fc; font-style:italic">No filters</div>
+            <div style="color:#a21caf">📁 ad_hoc/</div>
+            <div style="color:#94a3b8; padding-left:12px">├── user_uploaded_file.pdf</div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">├──</span>
+              <span style="color:#9333ea; font-weight:700">research_rbc_td_earnings_overview.docx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">├──</span>
+              <span style="color:#9333ea; font-weight:700">research_rbc_td_capital_ratios.xlsx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="padding-left:12px; display:flex; align-items:center; gap:5px">
+              <span style="color:#94a3b8">└──</span>
+              <span style="color:#9333ea; font-weight:700">report_rbc_td_earnings_q1_2025.docx</span>
+              <span style="background:#f3e8ff; border:1px solid #d8b4fe; border-radius:3px; padding:0px 4px; font-family:system-ui; font-size:7px; font-weight:700; color:#7e22ce; flex-shrink:0">new</span>
+            </div>
+            <div style="margin-top:6px; font-family:system-ui; font-size:8px; color:#a21caf; font-style:italic">* per conversation</div>
+          </div>
+
+          <!-- Mock conversation -->
+          <div style="flex:1; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:flex-start; gap:7px">
+              <div style="background:#f1f5f9; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#475569; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">USER</div>
+              <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:9px; color:#374151; flex:1; line-height:1.5">"Prepare an initial draft"</div>
+            </div>
+            <div style="display:flex; align-items:flex-start; gap:7px; padding-left:20px">
+              <div style="background:#eff6ff; border-radius:5px; padding:3px 6px; font-size:8px; font-weight:700; color:#2563eb; flex-shrink:0; margin-top:2px; letter-spacing:0.03em">SYS</div>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:7px 10px; font-size:9px; color:#1e40af; flex:1; line-height:1.5">
+                <div style="margin-bottom:8px">"Here is an initial draft report on RBC and TD's Q1 2025 earnings release covering key highlights across net interest margin, revenue, and capital ratios…"</div>
+                <div style="color:#6b7280; font-style:italic; margin-bottom:10px">[ … ]</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap">
+                  <div style="display:flex; align-items:center; gap:5px; background:white; border:1px solid #bfdbfe; border-radius:6px; padding:4px 8px">
+                    <svg width="14" height="17" viewBox="0 0 52 64" fill="none"><path d="M4 0h30l14 14v46a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#2563EB"/><path d="M34 0l14 14H38a4 4 0 01-4-4V0z" fill="#1D4ED8"/><text x="26" y="42" text-anchor="middle" fill="white" font-family="system-ui" font-size="11" font-weight="700">DOCX</text><rect x="10" y="18" width="20" height="2" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="10" y="23" width="16" height="2" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+                    <span style="font-family:monospace; font-size:8px; font-weight:700; color:#1e40af">report_rbc_td_earnings_q1_2025.docx</span>
+                  </div>
+                </div>
+                <div style="margin-top:7px; display:flex; align-items:center; gap:4px">
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="11" x2="10" y2="11" stroke="#9333ea" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <span style="font-size:7.5px; color:#9333ea; font-style:italic">outputs stored in ad_hoc/ — per conversation</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end final delivery card -->
+      </div><!-- end right col -->
+    </div><!-- end stage row -->
+
+  </div><!-- end flex column -->
+</div><!-- end section -->
+</div>
+
+</div>
+</body>
+</html>
