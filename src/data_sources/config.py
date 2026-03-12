@@ -43,7 +43,7 @@ class DataSourcesConfig:
 
     @classmethod
     def from_env(cls) -> DataSourcesConfig:
-        """Build config from environment variables.
+        """Build config from environment variables (and .env file if present).
 
         Authentication priority:
           1. OAuth2 (OPENAI_OAUTH_TOKEN_URL + CLIENT_ID + CLIENT_SECRET)
@@ -56,6 +56,12 @@ class DataSourcesConfig:
           OPENAI_MAX_COMPLETION_TOKENS — sets extraction_max_tokens, retrieval_max_tokens,
                                          vision_max_tokens
         """
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
+
         dsn = resolve_database_dsn()
         api_key = os.environ.get("OPENAI_API_KEY", "")
         oauth_token_url = os.environ.get("OPENAI_OAUTH_TOKEN_URL", "") or None
