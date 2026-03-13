@@ -325,59 +325,208 @@ SUPP_FINANCIALS_QUERIES: list[dict[str, Any]] = [
 
 PILLAR3_QUERIES: list[dict[str, Any]] = [
     {
-        "q": "What are the main components of RBC's CET1 capital and how did they move quarter over quarter?",
-        "terms": ["cet1", "common", "equity", "tier", "capital", "components"],
-        "why_hard": "Requires the CET1 capital composition table showing eligible retained earnings, AOCI, regulatory deductions and their QoQ changes.",
-        "difficulty": "medium",
-        "answer_pages": [],
-        "answer_pages_tbd": True,
-        "answer_citations": [],
-        "expected_answer_summary": "TBD — requires pillar3 document ingestion.",
-        "sources": [{"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"}],
-    },
-    {
-        "q": "How is RBC's total RWA split across credit risk, market risk, and operational risk?",
-        "terms": ["rwa", "risk-weighted", "assets", "credit", "market", "operational"],
-        "why_hard": "Requires the RWA summary table decomposed by Basel risk category, not segment allocation.",
-        "difficulty": "easy",
-        "answer_pages": [],
-        "answer_pages_tbd": True,
-        "answer_citations": [],
-        "expected_answer_summary": "TBD — requires pillar3 document ingestion.",
-        "sources": [{"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"}],
-    },
-    {
-        "q": "What are the IRB model estimates of PD, LGD, and EAD for RBC's wholesale corporate portfolio?",
-        "terms": ["irb", "pd", "lgd", "ead", "wholesale", "corporate"],
-        "why_hard": "Must find the IRB exposure table scoped to the wholesale corporate sub-portfolio, not the retail or sovereign portfolios.",
+        "q": "For Q1/2026, what are the TLAC RWA ratio and TLAC leverage ratio for each of the six major Canadian banks? Show the current ratio and the quarter-over-quarter change in basis points.",
+        "terms": ["TLAC", "RWA ratio", "leverage ratio", "TLAC RWA", "TLAC leverage", "quarter-over-quarter"],
+        "why_hard": "Requires finding TLAC disclosures across six separate bank filings and computing QoQ deltas",
         "difficulty": "hard",
         "answer_pages": [],
-        "answer_pages_tbd": True,
-        "answer_citations": [],
-        "expected_answer_summary": "TBD — requires pillar3 document ingestion.",
-        "sources": [{"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"}],
+        "answer_pages_tbd": False,
+        # Sheet containing TLAC composition (row 25 = TLAC RWA ratio, row 26 = TLAC leverage ratio).
+        # BMO=Page 13, BNS/CIBC/RBC=TLAC1, NBC=sheet 18, TD=sheet 9.
+        "per_source_answer_pages": {
+            "BMO": ["Page 13"],
+            "BNS": ["TLAC1"],
+            "CIBC": ["TLAC1"],
+            "NBC": ["18"],
+            "RBC": ["TLAC1"],
+            "TD": ["9"],
+        },
+        "expected_answer_summary": (
+            "BMO: TLAC RWA 29.1% (↓60 bps QoQ), TLAC leverage 8.6% (↑10 bps QoQ). "
+            "BNS: TLAC RWA 28.6% (↓50 bps QoQ), TLAC leverage 8.3% (↓20 bps QoQ). "
+            "CIBC: TLAC RWA 32.1% (↑20 bps QoQ), TLAC leverage 9.1% (↑10 bps QoQ). "
+            "NBC: TLAC RWA 32.5% (↑280 bps QoQ), TLAC leverage 9.2% (↑40 bps QoQ). "
+            "RBC: TLAC RWA 30.9% (↓60 bps QoQ), TLAC leverage 9.0% (↓20 bps QoQ). "
+            "TD: TLAC RWA 31.1% (↓70 bps QoQ), TLAC leverage 8.6% (↓30 bps QoQ)."
+        ),
+        "answer_citations": [
+            "BMO TLAC RWA ratio (row 25): 29.1% Q1/26, 29.7% Q4/25",
+            "BMO TLAC leverage ratio (row 26): 8.6% Q1/26, 8.5% Q4/25",
+            "BNS TLAC RWA ratio (row 25): 28.6% Q1/26, 29.1% Q4/25",
+            "BNS TLAC leverage ratio (row 26): 8.3% Q1/26, 8.5% Q4/25",
+            "CIBC TLAC RWA ratio (row 25): 32.1% Q1/26, 31.9% Q4/25",
+            "CIBC TLAC leverage ratio (row 26): 9.1% Q1/26, 9.0% Q4/25",
+            "NBC TLAC RWA ratio (row 25): 32.5% Q1/26, 29.7% Q4/25",
+            "NBC TLAC leverage ratio (row 26): 9.2% Q1/26, 8.8% Q4/25",
+            "RBC TLAC RWA ratio (row 25): 30.9% Q1/26, 31.5% Q4/25",
+            "RBC TLAC leverage ratio (row 26): 9.0% Q1/26, 9.2% Q4/25",
+            "TD TLAC RWA ratio (row 25): 31.1% Q1/26, 31.8% Q4/25",
+            "TD TLAC leverage ratio (row 26): 8.6% Q1/26, 8.9% Q4/25",
+        ],
+        "sources": [
+            {"report_type": "pillar3", "bank": "BMO", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "BNS", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "CIBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "NBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "TD", "year": 2026, "quarter": "Q1"},
+        ],
     },
     {
-        "q": "What is RBC's Basel III leverage ratio and how does it compare to the regulatory minimum?",
-        "terms": ["leverage", "ratio", "basel", "tier", "capital", "exposure"],
-        "why_hard": "'leverage ratio' is used both informally (debt/equity) and formally (Basel III Tier 1 / total exposure). Must find the Basel III definition.",
-        "difficulty": "medium",
+        "q": "Compare the CET1 capital ratios reported by all six major Canadian banks for Q1/2026. For each bank, state the CET1 ratio and its change versus Q4/2025 in basis points. Which bank reported the highest and lowest CET1 ratio?",
+        "terms": ["CET1", "Common Equity Tier 1", "capital ratio", "quarter-over-quarter", "basis points"],
+        "why_hard": "Multi-bank cross-document comparison requiring QoQ delta computation across six filings",
+        "difficulty": "hard",
         "answer_pages": [],
-        "answer_pages_tbd": True,
-        "answer_citations": [],
-        "expected_answer_summary": "TBD — requires pillar3 document ingestion.",
-        "sources": [{"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"}],
+        "answer_pages_tbd": False,
+        # Sheet containing KM1 key metrics (row 5 = CET1 ratio).
+        # BMO=Page 4, BNS/RBC=KM1, CIBC=KM1 - CQ PQ1 PQ2, NBC=sheet 5, TD=sheet 7.
+        "per_source_answer_pages": {
+            "BMO": ["Page 4"],
+            "BNS": ["KM1"],
+            "CIBC": ["KM1 - CQ, PQ1, PQ2"],
+            "NBC": ["5"],
+            "RBC": ["KM1"],
+            "TD": ["7"],
+        },
+        "expected_answer_summary": (
+            "BMO: 13.1% (↓20 bps vs Q4/25). BNS: 13.3% (↑10 bps). CIBC: 13.4% (↑10 bps). "
+            "NBC: 13.7% (↓10 bps). RBC: 13.7% (↑20 bps). TD: 14.5% (↓20 bps). "
+            "Highest CET1: TD at 14.5%. Lowest CET1: BMO at 13.1%."
+        ),
+        "answer_citations": [
+            "BMO CET1 ratio (row 5): 13.1% Q1/26, 13.3% Q4/25",
+            "BNS CET1 ratio (row 5): 13.3% Q1/26, 13.2% Q4/25",
+            "CIBC CET1 ratio (row 5): 13.4% Q1/26, 13.3% Q4/25",
+            "NBC CET1 ratio (row 5): 13.7% Q1/26, 13.8% Q4/25",
+            "RBC CET1 ratio (row 5): 13.7% Q1/26, 13.5% Q4/25",
+            "TD CET1 ratio (row 5): 14.5% Q1/26, 14.7% Q4/25",
+        ],
+        "sources": [
+            {"report_type": "pillar3", "bank": "BMO", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "BNS", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "CIBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "NBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "TD", "year": 2026, "quarter": "Q1"},
+        ],
     },
     {
-        "q": "What is RBC's Liquidity Coverage Ratio and what are the main high-quality liquid asset components?",
-        "terms": ["lcr", "liquidity", "coverage", "ratio", "hqla"],
-        "why_hard": "LCR requires distinguishing HQLA by level (Level 1, Level 2A, Level 2B) and matching net cash outflows — all Pillar 3 disclosure items.",
+        "q": "What was the Basel III leverage ratio for each of the six major Canadian banks in Q1/2026, and how did it change compared to Q4/2025?",
+        "terms": ["leverage ratio", "Basel III", "Tier 1 leverage", "quarter-over-quarter"],
+        "why_hard": "Leverage ratio can appear in multiple sections; must distinguish from TLAC leverage ratio across six filings",
         "difficulty": "medium",
         "answer_pages": [],
-        "answer_pages_tbd": True,
-        "answer_citations": [],
-        "expected_answer_summary": "TBD — requires pillar3 document ingestion.",
-        "sources": [{"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"}],
+        "answer_pages_tbd": False,
+        # Sheet containing KM1 key metrics (row 14 = Basel III leverage ratio).
+        # Same KM1 sheet per bank as CET1 query.
+        "per_source_answer_pages": {
+            "BMO": ["Page 4"],
+            "BNS": ["KM1"],
+            "CIBC": ["KM1 - CQ, PQ1, PQ2"],
+            "NBC": ["5"],
+            "RBC": ["KM1"],
+            "TD": ["7"],
+        },
+        "expected_answer_summary": (
+            "BMO: 4.4% (↑10 bps vs Q4/25). BNS: 4.4% (↓10 bps). CIBC: 4.4% (↑10 bps). "
+            "NBC: 4.3% (↓20 bps). RBC: 4.4% (unchanged). TD: 4.5% (↓10 bps). "
+            "All six banks remain comfortably above the 3% OSFI minimum leverage ratio requirement."
+        ),
+        "answer_citations": [
+            "BMO Basel III leverage ratio (row 14): 4.4% Q1/26, 4.3% Q4/25",
+            "BNS Basel III leverage ratio (row 14): 4.4% Q1/26, 4.5% Q4/25",
+            "CIBC leverage ratio (row 14): 4.4% Q1/26, 4.3% Q4/25",
+            "NBC Basel III leverage ratio (row 14): 4.3% Q1/26, 4.5% Q4/25",
+            "RBC Basel III leverage ratio (row 14): 4.4% Q1/26, 4.4% Q4/25",
+            "TD Basel III leverage ratio (row 14): 4.5% Q1/26, 4.6% Q4/25",
+        ],
+        "sources": [
+            {"report_type": "pillar3", "bank": "BMO", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "BNS", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "CIBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "NBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "TD", "year": 2026, "quarter": "Q1"},
+        ],
+    },
+    {
+        "q": "For Q1/2026, compare the total capital ratios across all six major Canadian banks. State the Q1/2026 ratio and the basis point change versus Q4/2025 for each bank.",
+        "terms": ["total capital ratio", "capital adequacy", "quarter-over-quarter", "basis points"],
+        "why_hard": "Total capital ratio must be distinguished from Tier 1 and CET1; requires cross-filing aggregation",
+        "difficulty": "medium",
+        "answer_pages": [],
+        "answer_pages_tbd": False,
+        # Sheet containing KM1 key metrics (row 7 = total capital ratio).
+        # Same KM1 sheet per bank as CET1 query.
+        "per_source_answer_pages": {
+            "BMO": ["Page 4"],
+            "BNS": ["KM1"],
+            "CIBC": ["KM1 - CQ, PQ1, PQ2"],
+            "NBC": ["5"],
+            "RBC": ["KM1"],
+            "TD": ["7"],
+        },
+        "expected_answer_summary": (
+            "BMO: 16.9% (↓40 bps vs Q4/25). BNS: 17.0% (↓10 bps). CIBC: 17.7% (↑30 bps). "
+            "NBC: 17.3% (unchanged). RBC: 16.8% (unchanged). TD: 18.1% (↓30 bps). "
+            "Highest total capital ratio: TD at 18.1%. Lowest: RBC at 16.8%."
+        ),
+        "answer_citations": [
+            "BMO total capital ratio (row 7): 16.9% Q1/26, 17.3% Q4/25",
+            "BNS total capital ratio (row 7): 17.0% Q1/26, 17.1% Q4/25",
+            "CIBC total capital ratio (row 7): 17.7% Q1/26, 17.4% Q4/25",
+            "NBC total capital ratio (row 7): 17.3% Q1/26, 17.3% Q4/25",
+            "RBC total capital ratio (row 7): 16.8% Q1/26, 16.8% Q4/25",
+            "TD total capital ratio (row 7): 18.1% Q1/26, 18.4% Q4/25",
+        ],
+        "sources": [
+            {"report_type": "pillar3", "bank": "BMO", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "BNS", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "CIBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "NBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "TD", "year": 2026, "quarter": "Q1"},
+        ],
+    },
+    {
+        "q": "What were the Tier 1 capital ratios for all six major Canadian banks in Q1/2026? Show both the current quarter ratio and the quarter-over-quarter change.",
+        "terms": ["Tier 1", "capital ratio", "T1 ratio", "quarter-over-quarter", "basis points"],
+        "why_hard": "Must extract Tier 1 (not CET1) specifically and compare across all six filings with QoQ delta",
+        "difficulty": "medium",
+        "answer_pages": [],
+        "answer_pages_tbd": False,
+        # Sheet containing KM1 key metrics (row 6 = Tier 1 ratio).
+        # Same KM1 sheet per bank as CET1 query.
+        "per_source_answer_pages": {
+            "BMO": ["Page 4"],
+            "BNS": ["KM1"],
+            "CIBC": ["KM1 - CQ, PQ1, PQ2"],
+            "NBC": ["5"],
+            "RBC": ["KM1"],
+            "TD": ["7"],
+        },
+        "expected_answer_summary": (
+            "BMO: 14.8% (↓20 bps vs Q4/25). BNS: 15.4% (↑10 bps). CIBC: 15.4% (↑30 bps). "
+            "NBC: 15.1% (unchanged). RBC: 15.2% (↑10 bps). TD: 16.3% (↓10 bps). "
+            "Highest Tier 1 ratio: TD at 16.3%. Lowest: BMO at 14.8%."
+        ),
+        "answer_citations": [
+            "BMO Tier 1 ratio (row 6): 14.8% Q1/26, 15.0% Q4/25",
+            "BNS Tier 1 ratio (row 6): 15.4% Q1/26, 15.3% Q4/25",
+            "CIBC Tier 1 ratio (row 6): 15.4% Q1/26, 15.1% Q4/25",
+            "NBC Tier 1 ratio (row 6): 15.1% Q1/26, 15.1% Q4/25",
+            "RBC Tier 1 ratio (row 6): 15.2% Q1/26, 15.1% Q4/25",
+            "TD Tier 1 ratio (row 6): 16.3% Q1/26, 16.4% Q4/25",
+        ],
+        "sources": [
+            {"report_type": "pillar3", "bank": "BMO", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "BNS", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "CIBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "NBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "RBC", "year": 2026, "quarter": "Q1"},
+            {"report_type": "pillar3", "bank": "TD", "year": 2026, "quarter": "Q1"},
+        ],
     },
     {
         "q": "What is RBC's Net Stable Funding Ratio and how does it decompose between available and required stable funding?",

@@ -519,6 +519,66 @@ def _judge_answer(
 
 # ── Ground truth helpers ──────────────────────────────────────────────
 
+def _qualify_page(bank_code: str, sheet_name: str) -> str:
+    """Return a qualified page identifier that includes the bank: ``BANK:sheet``."""
+    return f"{bank_code}:{sheet_name}"
+
+
+def _fetch_per_source_ground_truth(
+    per_source_answer_pages: dict[str, list[str]],
+    db: DataSourcesDB,
+    source_dicts: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Fetch ground truth for multi-bank queries where each bank has specific pages.
+
+    Returns a dict keyed by qualified page names (``BANK:sheet``).
+    """
+    bank_to_source: dict[str, dict[str, Any]] = {}
+    for source_dict in source_dicts:
+        bc = (source_dict.get("schema_json") or {}).get("bank_code") or ""
+        if bc:
+            bank_to_source[bc] = source_dict
+
+    result: dict[str, str] = {}
+    for bank_code, sheets in per_source_answer_pages.items():
+        source_dict = bank_to_source.get(bank_code)
+        if not source_dict:
+            continue
+        for sheet_name in sheets:
+            content = _fetch_target_content(sheet_name, db, source_dict)
+            if content:
+                result[_qualify_page(bank_code, sheet_name)] = content
+    return result
+
+
+def _collect_per_source_answer_page_hits(
+    rows: list[dict[str, Any]],
+    per_source_answer_pages: dict[str, list[str]],
+) -> dict[str, dict[str, Any]]:
+    """Collect retrieval metadata for multi-bank canonical pages.
+
+    Matches retrieved rows by ``(bank_code, sheet_name)`` and returns hits
+    keyed by qualified page names (``BANK:sheet``).
+    """
+    target_set = {
+        _qualify_page(bank, sheet)
+        for bank, sheets in per_source_answer_pages.items()
+        for sheet in sheets
+    }
+    hits: dict[str, dict[str, Any]] = {}
+    for rank, row in enumerate(rows, 1):
+        bank_code = str(row.get("bank_code") or "").strip()
+        sheet_name = str(row.get("sheet_name") or "").strip()
+        qualified = _qualify_page(bank_code, sheet_name)
+        if qualified in target_set and qualified not in hits:
+            hits[qualified] = {
+                "rank": rank,
+                "score": row.get("score", 0),
+                "via": row.get("match_sources", []),
+            }
+    return hits
+
+
 def _fetch_target_content(page_name: str, db: DataSourcesDB, source: dict[str, Any]) -> str:
     """Fetch raw content for a target page scoped to the configured source."""
     schema_json = source.get("schema_json") or {}
@@ -691,12 +751,20 @@ def _run_single_query(
     difficulty = qdata["difficulty"]
     answer_pages = _normalize_answer_pages(qdata.get("answer_pages", []))
     answer_pages_tbd = qdata.get("answer_pages_tbd", False)
+    # Multi-bank queries supply per_source_answer_pages: {bank_code: [sheet_names]}.
+    # When present, effective answer pages are derived from it as qualified "BANK:sheet" keys.
+    per_source_answer_pages: dict[str, list[str]] | None = qdata.get("per_source_answer_pages")
 
     source_dicts = [_build_source_dict(**src) for src in qdata["sources"]]
 
     log.info("=" * 80)
     log.info("Q%d [%s]: %s", qi, difficulty.upper(), query)
-    if answer_pages:
+    if per_source_answer_pages:
+        per_src_summary = ", ".join(
+            f"{b}:{s}" for b, sheets in per_source_answer_pages.items() for s in sheets
+        )
+        log.info("  Target (per-source): %s | Why hard: %s", per_src_summary, qdata["why_hard"][:80])
+    elif answer_pages:
         log.info("  Target: %s | Why hard: %s", ", ".join(answer_pages), qdata["why_hard"][:80])
     else:
         log.info("  Target: TBD | Why hard: %s", qdata["why_hard"][:80])
@@ -714,12 +782,27 @@ def _run_single_query(
     matched_answer_pages: list[str] = []
     missing_answer_pages: list[str] = []
 
-    if not answer_pages_tbd and answer_pages:
+    # Determine effective answer pages and pre-fetch ground truth.
+    if per_source_answer_pages and not answer_pages_tbd:
+        # Multi-bank path: derive qualified page ids from per_source_answer_pages.
+        effective_answer_pages = [
+            _qualify_page(bank, sheet)
+            for bank, sheets in per_source_answer_pages.items()
+            for sheet in sheets
+        ]
+        ground_truth_pages = _fetch_per_source_ground_truth(per_source_answer_pages, db, source_dicts)
+        missing_ground_truth_pages = [p for p in effective_answer_pages if p not in ground_truth_pages]
+        if missing_ground_truth_pages:
+            log.warning("Could not fetch per-source ground truth for %s", ", ".join(missing_ground_truth_pages))
+    elif not answer_pages_tbd and answer_pages:
+        # Single-source path: flat answer_pages list.
+        effective_answer_pages = list(answer_pages)
         ground_truth_pages = _fetch_ground_truth_pages_multi(answer_pages, db, source_dicts)
         missing_ground_truth_pages = [p for p in answer_pages if p not in ground_truth_pages]
         if missing_ground_truth_pages:
             log.warning("Could not fetch ground truth for %s", ", ".join(missing_ground_truth_pages))
     else:
+        effective_answer_pages = []
         ground_truth_pages = {}
         missing_ground_truth_pages = []
 
@@ -740,22 +823,28 @@ def _run_single_query(
     rows = all_rows
     t_retrieval = time.monotonic() - t0
 
-    if not retrieval_error and not answer_pages_tbd and answer_pages:
-        answer_page_hits = _collect_answer_page_hits(rows, answer_pages)
-        matched_answer_pages = [p for p in answer_pages if p in answer_page_hits]
-        missing_answer_pages = [p for p in answer_pages if p not in answer_page_hits]
+    if not retrieval_error and effective_answer_pages:
+        if per_source_answer_pages and not answer_pages_tbd:
+            answer_page_hits = _collect_per_source_answer_page_hits(rows, per_source_answer_pages)
+        else:
+            answer_page_hits = _collect_answer_page_hits(rows, effective_answer_pages)
+        matched_answer_pages = [p for p in effective_answer_pages if p in answer_page_hits]
+        missing_answer_pages = [p for p in effective_answer_pages if p not in answer_page_hits]
         found_target = not missing_answer_pages
         if matched_answer_pages:
             if found_target:
-                target_rank = max(int(answer_page_hits[p]["rank"]) for p in answer_pages)
-                target_score = min(float(answer_page_hits[p].get("score") or 0) for p in answer_pages)
+                target_rank = max(int(answer_page_hits[p]["rank"]) for p in effective_answer_pages)
+                target_score = min(float(answer_page_hits[p].get("score") or 0) for p in effective_answer_pages)
                 target_via = sorted({
                     s_name
-                    for p in answer_pages
+                    for p in effective_answer_pages
                     for s_name in answer_page_hits[p].get("via", [])
                 })
             else:
-                primary_hit = answer_page_hits.get(answer_pages[0]) or answer_page_hits[matched_answer_pages[0]]
+                primary_hit = (
+                    answer_page_hits.get(effective_answer_pages[0])
+                    or answer_page_hits[matched_answer_pages[0]]
+                )
                 target_rank = int(primary_hit["rank"])
                 target_score = primary_hit.get("score", 0)
                 target_via = primary_hit.get("via", [])
@@ -866,6 +955,8 @@ def _run_single_query(
         "why_hard": qdata["why_hard"],
         "answer_pages": answer_pages,
         "answer_pages_tbd": answer_pages_tbd,
+        "per_source_answer_pages": per_source_answer_pages or {},
+        "effective_answer_pages": effective_answer_pages,
         "query_sources": qdata["sources"],
         "matched_answer_pages": matched_answer_pages,
         "missing_answer_pages": missing_answer_pages,
