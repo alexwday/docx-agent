@@ -166,11 +166,30 @@ def _call_vision_api(
     config: DataSourcesConfig,
     model: str,
     max_tokens: int,
+    prior_context: str | None = None,
 ) -> str:
-    """Send one rendered page image to the vision model; return extracted markdown."""
+    """Send one rendered page image to the vision model; return extracted markdown.
+
+    If ``prior_context`` is provided (e.g. the top-half extraction when processing
+    the bottom half), it is prepended to the prompt so the model has column headers
+    and section context from earlier in the page.
+    """
     client = build_openai_client(config)
     b64 = base64.b64encode(img_bytes).decode()
     retryable = _retryable_errors()
+
+    if prior_context:
+        prompt = (
+            "The following markdown was extracted from the TOP HALF of this page:\n\n"
+            f"{prior_context}\n\n"
+            "---\n\n"
+            "Now extract the BOTTOM HALF of the page shown in the image below, "
+            "continuing from where the top half left off. Use the top-half content "
+            "for context (e.g. table column headers, section titles).\n\n"
+            + _EXTRACTION_PROMPT
+        )
+    else:
+        prompt = _EXTRACTION_PROMPT
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
@@ -187,7 +206,7 @@ def _call_vision_api(
                                     "detail": "high",
                                 },
                             },
-                            {"type": "text", "text": _EXTRACTION_PROMPT},
+                            {"type": "text", "text": prompt},
                         ],
                     }
                 ],
@@ -261,29 +280,51 @@ def read_pdf_sheets_with_vision(
             logger.warning("  Page %d/%d skipped (render failed)", idx + 1, num_pages)
             return idx, "## Page Render Failed\n\nThis page could not be rendered."
 
-        # First attempt: full page
+        # Attempt 1: full page at original DPI
         try:
             content = _call_vision_api(img, config=config, model=model, max_tokens=max_tokens)
             logger.info("  Page %d/%d extracted (%d chars)", idx + 1, num_pages, len(content))
             return idx, content
         except Exception as exc:
             logger.warning(
-                "  Page %d/%d full-page extraction failed (%s) — retrying as top/bottom halves",
+                "  Page %d/%d failed at full DPI (%s) — retrying at half resolution (full page, no context loss)",
                 idx + 1, num_pages, exc,
             )
 
-        # Fallback: split into top and bottom halves, call twice, concatenate
+        # Attempt 2: full page shrunk to half resolution — same single prompt, all context
+        # preserved, just smaller image for the model to process.
+        try:
+            import fitz  # type: ignore[import]
+            pix = fitz.Pixmap(img)
+            pix.shrink(1)  # halves each dimension → quarter the pixel area
+            small_img = pix.tobytes("png")
+            content = _call_vision_api(small_img, config=config, model=model, max_tokens=max_tokens)
+            logger.info(
+                "  Page %d/%d extracted at half resolution (%d chars)", idx + 1, num_pages, len(content)
+            )
+            return idx, content
+        except Exception as exc:
+            logger.warning(
+                "  Page %d/%d failed at half resolution (%s) — retrying as split halves with context",
+                idx + 1, num_pages, exc,
+            )
+
+        # Attempt 3: split into top/bottom halves, passing top output as context to bottom
+        # so column headers and page context from the top half are available.
         try:
             top_img, bot_img = _split_image_vertically(img)
             top_content = _call_vision_api(top_img, config=config, model=model, max_tokens=max_tokens)
-            bot_content = _call_vision_api(bot_img, config=config, model=model, max_tokens=max_tokens)
+            bot_content = _call_vision_api(
+                bot_img, config=config, model=model, max_tokens=max_tokens,
+                prior_context=top_content,
+            )
             content = top_content + "\n\n" + bot_content
             logger.info(
                 "  Page %d/%d extracted as halves (%d chars)", idx + 1, num_pages, len(content)
             )
             return idx, content
         except Exception as exc:
-            logger.error("  Page %d/%d failed even as halves: %s", idx + 1, num_pages, exc)
+            logger.error("  Page %d/%d failed on all attempts: %s", idx + 1, num_pages, exc)
             return idx, f"## Page Extraction Failed\n\nError: {exc}"
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
