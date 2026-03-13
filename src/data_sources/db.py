@@ -98,7 +98,7 @@ class DataSourcesDB:
         with self.store.connection() as conn:
             cur = conn.execute(
                 """
-                SELECT COUNT(rs.sheet_id)
+                SELECT COUNT(rs.sheet_id) AS sheet_count
                 FROM data_sources.report_sheets rs
                 JOIN data_sources.report_documents rd ON rd.document_id = rs.document_id
                 WHERE rd.bank_code = %s AND rd.report_type = %s AND rd.period_code = %s
@@ -106,7 +106,7 @@ class DataSourcesDB:
                 (bank_code, report_type, period_code),
             )
             row = cur.fetchone()
-            return int(row[0]) if row else 0
+            return int(row["sheet_count"]) if row else 0
 
     def delete_sheets_for_document(self, document_id: UUID) -> int:
         """Delete all sheets (and their metrics/keyword embeddings) for a document."""
