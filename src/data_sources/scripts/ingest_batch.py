@@ -19,6 +19,7 @@ import argparse
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -78,11 +79,49 @@ def _discover_files(root: Path) -> list[dict[str, Any]]:
     return entries
 
 
+def _ingest_one(entry: dict[str, Any], config: DataSourcesConfig, db: DataSourcesDB) -> dict[str, Any]:
+    """Ingest a single file; return a result dict for the summary table."""
+    path = entry["path"]
+    label = f"{entry['report_type']}/{entry['period_code']}/{entry['bank_code']}/{path.name}"
+    log.info("Ingesting: %s", label)
+    t0 = time.monotonic()
+    try:
+        common_kwargs: dict[str, Any] = dict(
+            file_path=path,
+            bank_code=entry["bank_code"],
+            report_type=entry["report_type"],
+            period_code=entry["period_code"],
+            fiscal_year=entry["fiscal_year"],
+            fiscal_quarter=entry["fiscal_quarter"],
+            config=config,
+            db=db,
+        )
+        if entry["ext"] == ".pdf":
+            summary = ingest_pdf_report(**common_kwargs)
+        else:
+            summary = ingest_supplementary_report(**common_kwargs)
+        elapsed = time.monotonic() - t0
+        log.info(
+            "  OK — %s: %d sheets (%d data), %d metrics, %.1fs",
+            label,
+            summary.get("total_sheets", 0),
+            summary.get("data_sheets", 0),
+            summary.get("total_metrics", 0),
+            elapsed,
+        )
+        return {"label": label, "status": "ok", "elapsed_s": round(elapsed, 1), **summary}
+    except Exception as exc:
+        elapsed = time.monotonic() - t0
+        log.error("  FAILED — %s: %s", label, exc, exc_info=True)
+        return {"label": label, "status": "error", "error": str(exc), "elapsed_s": round(elapsed, 1)}
+
+
 def run_batch(
     root: Path,
     *,
     dry_run: bool = False,
     ensure_schema: bool = False,
+    parallel_files: int = 3,
 ) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -102,47 +141,22 @@ def run_batch(
         log.info("No files found under %s", root)
         return
 
-    log.info("Discovered %d file(s) to ingest under %s", len(entries), root)
+    log.info("Discovered %d file(s) to ingest under %s (parallel_files=%d)", len(entries), root, parallel_files)
 
     results: list[dict[str, Any]] = []
-    for entry in entries:
-        path = entry["path"]
-        label = f"{entry['report_type']}/{entry['period_code']}/{entry['bank_code']}/{path.name}"
-        if dry_run:
+
+    if dry_run:
+        for entry in entries:
+            label = f"{entry['report_type']}/{entry['period_code']}/{entry['bank_code']}/{entry['path'].name}"
             log.info("[DRY RUN] Would ingest: %s", label)
             results.append({"label": label, "status": "dry_run"})
-            continue
-
-        log.info("Ingesting: %s", label)
-        t0 = time.monotonic()
-        try:
-            common_kwargs: dict[str, Any] = dict(
-                file_path=path,
-                bank_code=entry["bank_code"],
-                report_type=entry["report_type"],
-                period_code=entry["period_code"],
-                fiscal_year=entry["fiscal_year"],
-                fiscal_quarter=entry["fiscal_quarter"],
-                config=config,
-                db=db,
-            )
-            if entry["ext"] == ".pdf":
-                summary = ingest_pdf_report(**common_kwargs)
-            else:
-                summary = ingest_supplementary_report(**common_kwargs)
-            elapsed = time.monotonic() - t0
-            results.append({"label": label, "status": "ok", "elapsed_s": round(elapsed, 1), **summary})
-            log.info(
-                "  OK — %d sheets (%d data), %d metrics, %.1fs",
-                summary.get("total_sheets", 0),
-                summary.get("data_sheets", 0),
-                summary.get("total_metrics", 0),
-                elapsed,
-            )
-        except Exception as exc:
-            elapsed = time.monotonic() - t0
-            log.error("  FAILED — %s: %s", label, exc)
-            results.append({"label": label, "status": "error", "error": str(exc), "elapsed_s": round(elapsed, 1)})
+    else:
+        with ThreadPoolExecutor(max_workers=parallel_files) as pool:
+            futures = {pool.submit(_ingest_one, entry, config, db): entry for entry in entries}
+            for future in as_completed(futures):
+                results.append(future.result())
+        # Sort by label for consistent summary table output
+        results.sort(key=lambda r: r["label"])
 
     # ── Summary table ──────────────────────────────────────────────
     print()
@@ -183,8 +197,14 @@ def main() -> None:
         action="store_true",
         help="Run schema migrations before ingesting.",
     )
+    parser.add_argument(
+        "--parallel-files",
+        type=int,
+        default=3,
+        help="Number of files to ingest in parallel (default: 3).",
+    )
     args = parser.parse_args()
-    run_batch(Path(args.root), dry_run=args.dry_run, ensure_schema=args.ensure_schema)
+    run_batch(Path(args.root), dry_run=args.dry_run, ensure_schema=args.ensure_schema, parallel_files=args.parallel_files)
 
 
 if __name__ == "__main__":
