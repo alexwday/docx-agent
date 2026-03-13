@@ -94,8 +94,14 @@ def _retryable_errors() -> tuple[type[Exception], ...]:
     )
 
 
-def _render_page_png(pdf_path: Path, page_idx: int, dpi_scale: float) -> bytes:
-    """Render one PDF page to PNG bytes using PyMuPDF."""
+def _render_all_pages(pdf_path: Path, dpi_scale: float) -> list[bytes]:
+    """Open the PDF once and render every page to PNG bytes.
+
+    Opening once (vs. once-per-page) avoids repeated structure-tree
+    validation and is significantly faster for large documents.
+    MuPDF structure-tree warnings (e.g. "no common ancestor") are
+    harmless for rasterisation and are cleared after opening.
+    """
     try:
         import fitz  # type: ignore[import]  # pymupdf
     except ImportError as exc:
@@ -104,13 +110,33 @@ def _render_page_png(pdf_path: Path, page_idx: int, dpi_scale: float) -> bytes:
         ) from exc
 
     doc = fitz.open(str(pdf_path))
+    # Clear any structure-tree / format warnings accumulated during open.
+    # These are PDF/UA accessibility issues that do not affect rendering.
+    warnings = fitz.TOOLS.mupdf_warnings()
+    if warnings:
+        logger.debug("PyMuPDF warnings (non-fatal, cleared): %s", warnings)
+
+    images: list[bytes] = []
     try:
-        page = doc[page_idx]
         mat = fitz.Matrix(dpi_scale, dpi_scale)
-        pix = page.get_pixmap(matrix=mat, alpha=False)
-        return pix.tobytes("png")
+        for page_idx in range(len(doc)):
+            try:
+                pix = doc[page_idx].get_pixmap(matrix=mat, alpha=False)
+                images.append(pix.tobytes("png"))
+            except Exception as exc:
+                logger.warning(
+                    "Failed to render page %d of '%s' (%s) — inserting blank placeholder",
+                    page_idx + 1,
+                    pdf_path.name,
+                    exc,
+                )
+                images.append(b"")  # blank placeholder; vision API step will skip
+            finally:
+                # Clear any per-page warnings
+                fitz.TOOLS.mupdf_warnings()
     finally:
         doc.close()
+    return images
 
 
 def _call_vision_api(
@@ -188,35 +214,33 @@ def read_pdf_sheets_with_vision(
             "Vision PDF processing requires PyMuPDF: pip install pymupdf"
         ) from exc
 
-    import fitz  # type: ignore[import]
-
-    doc = fitz.open(str(path))
-    num_pages = len(doc)
-    doc.close()
+    # ── Step 1: Render all pages to PNG locally (single open) ────────
+    logger.info("Rendering pages from '%s' to PNG (dpi=%.1fx)...", path.name, dpi_scale)
+    page_images = _render_all_pages(path, dpi_scale=dpi_scale)
+    num_pages = len(page_images)
+    rendered = sum(1 for b in page_images if b)
+    total_kb = sum(len(b) for b in page_images) // 1024
 
     logger.info(
-        "Vision PDF reader: %d pages in '%s' (model=%s, workers=%d, dpi=%.1fx)",
+        "Vision PDF reader: %d pages in '%s' (%d rendered, model=%s, workers=%d)",
         num_pages,
         path.name,
+        rendered,
         model,
         max_workers,
-        dpi_scale,
     )
-
-    # ── Step 1: Render all pages to PNG locally ──────────────────────
-    logger.info("Rendering %d pages to PNG...", num_pages)
-    page_images: list[bytes] = [
-        _render_page_png(path, i, dpi_scale=dpi_scale) for i in range(num_pages)
-    ]
-    total_kb = sum(len(b) for b in page_images) // 1024
-    logger.info("Rendered %d pages (%d KB total). Submitting to vision API...", num_pages, total_kb)
+    logger.info("Rendered %d/%d pages (%d KB total). Submitting to vision API...", rendered, num_pages, total_kb)
 
     # ── Step 2: Extract pages concurrently via vision API ────────────
     results: dict[int, str] = {}
 
     def _process(idx: int) -> tuple[int, str]:
+        img = page_images[idx]
+        if not img:
+            logger.warning("  Page %d/%d skipped (render failed)", idx + 1, num_pages)
+            return idx, "## Page Render Failed\n\nThis page could not be rendered."
         content = _call_vision_api(
-            page_images[idx],
+            img,
             config=config,
             model=model,
             max_tokens=max_tokens,
