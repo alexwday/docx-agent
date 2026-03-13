@@ -1015,6 +1015,8 @@ def _run_single_query(
     answer = ""
     answer_rows: list[dict[str, Any]] = []
     per_bank_research: dict[str, str] = {}
+    t_research = 0.0
+    t_synthesis = 0.0
     if retrieval_error:
         answer_error = f"Skipped synthesis because retrieval failed: {retrieval_error}"
     elif per_source_answer_pages and not answer_pages_tbd:
@@ -1025,22 +1027,48 @@ def _run_single_query(
                 bc = str(row.get("bank_code") or "unknown")
                 bank_to_rows.setdefault(bc, []).append(row)
 
-            # Stage 2a: per-bank extraction
             all_bank_codes = list(bank_to_rows.keys())
-            for bank_code, bank_rows in bank_to_rows.items():
-                log.info("  Q%d RESEARCH (%s): %d rows", qi, bank_code, len(bank_rows))
-                per_bank_research[bank_code] = _generate_per_bank_research(
-                    query, bank_code, bank_rows, all_bank_codes, config
-                )
+            log.info(
+                "  Q%d RESEARCH: launching %d parallel bank threads (%s)",
+                qi, len(all_bank_codes), ", ".join(all_bank_codes),
+            )
+
+            # Stage 2a: per-bank extraction — all banks in parallel
+            t_research_start = time.monotonic()
+            with ThreadPoolExecutor(max_workers=len(all_bank_codes)) as bank_pool:
+                future_to_bank = {
+                    bank_pool.submit(
+                        _generate_per_bank_research,
+                        query, bc, bank_to_rows[bc], all_bank_codes, config,
+                    ): bc
+                    for bc in all_bank_codes
+                }
+                for future in as_completed(future_to_bank):
+                    bc = future_to_bank[future]
+                    try:
+                        per_bank_research[bc] = future.result()
+                        log.info("  Q%d RESEARCH (%s): done", qi, bc)
+                    except Exception as exc:
+                        log.warning("  Q%d RESEARCH (%s): error — %s", qi, bc, exc)
+                        per_bank_research[bc] = f"[Research failed for {bc}: {exc}]"
+            t_research = time.monotonic() - t_research_start
+            log.info(
+                "  Q%d RESEARCH: all %d banks done in %.1fs",
+                qi, len(all_bank_codes), t_research,
+            )
 
             # Stage 2b: cross-bank synthesis
+            t_synthesis_start = time.monotonic()
             answer, answer_rows = _synthesize_multi_bank(query, per_bank_research, config)
+            t_synthesis = time.monotonic() - t_synthesis_start
         except Exception as exc:
             answer_error = f"Synthesis error: {exc}"
     else:
         try:
+            t_synthesis_start = time.monotonic()
             answer_rows = list(rows)
             answer = _generate_answer(query, answer_rows, config)
+            t_synthesis = time.monotonic() - t_synthesis_start
         except Exception as exc:
             answer_error = f"Synthesis error: {exc}"
     t_answer = time.monotonic() - t1
@@ -1093,6 +1121,19 @@ def _run_single_query(
     log.info("    Overall:             %d/5 — %s", overall, explanation[:80])
 
     elapsed = t_retrieval + t_answer + t_judge
+
+    if t_research > 0:
+        log.info(
+            "  Q%d ── TOTAL %.1fs  [retrieval %.1fs | research %.1fs (%d banks parallel)"
+            " | synthesis %.1fs | judge %.1fs]",
+            qi, elapsed, t_retrieval, t_research, len(per_bank_research),
+            t_synthesis, t_judge,
+        )
+    else:
+        log.info(
+            "  Q%d ── TOTAL %.1fs  [retrieval %.1fs | synthesis %.1fs | judge %.1fs]",
+            qi, elapsed, t_retrieval, t_synthesis, t_judge,
+        )
     returned_pages = [
         {
             "source_num": idx,
@@ -1165,6 +1206,8 @@ def _run_single_query(
         },
         "timings": {
             "retrieval_s": round(t_retrieval, 3),
+            "research_s": round(t_research, 3),
+            "synthesis_s": round(t_synthesis, 3),
             "answer_s": round(t_answer, 3),
             "judge_s": round(t_judge, 3),
             "elapsed_s": round(elapsed, 3),
