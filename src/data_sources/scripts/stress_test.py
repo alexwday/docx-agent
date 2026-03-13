@@ -34,6 +34,22 @@ from data_sources.scripts.stress_test_report import build_report_payload, write_
 from word_store.db import PostgresStore
 
 
+# ── Per-bank extraction prompt (stage 1 of multi-bank synthesis) ──────
+
+_PER_BANK_RESEARCH_PROMPT = """\
+You are extracting specific financial metrics from pages of a Canadian bank's \
+quarterly regulatory (Pillar 3) disclosure. Your output will be passed to a \
+second model that synthesises a comparative answer across multiple banks.
+
+Extract only the data directly relevant to the question. Be precise and concise:
+- State exact values with their period labels exactly as they appear in the source.
+- Include the row number or label from the source table so the downstream model \
+  can verify provenance.
+- Do not reformat values (e.g. keep 13.1% as 13.1%, not 0.131).
+- Do not add interpretation, caveats, or context beyond what is in the source.
+- If a value is not present in the provided pages, state that explicitly.\
+"""
+
 # ── SOTA synthesis prompt ─────────────────────────────────────────────
 
 _ANSWER_SYSTEM_PROMPT = """\
@@ -444,6 +460,83 @@ def _generate_answer(
         ],
     )
     return response.choices[0].message.content or ""
+
+
+def _generate_per_bank_research(
+    query: str,
+    bank_code: str,
+    bank_rows: list[dict[str, Any]],
+    config: DataSourcesConfig,
+) -> str:
+    """Stage 1 of multi-bank synthesis: extract relevant metrics for one bank.
+
+    Produces a compact research summary that is passed to the final synthesis
+    step, keeping the per-bank call well within token limits.
+    """
+    context_parts = []
+    for i, row in enumerate(bank_rows, 1):
+        content = row.get("content", "")
+        if not content:
+            continue
+        clean = _strip_header(content)
+        sheet_name = row.get("sheet_name", "?")
+        page_title = row.get("page_title") or sheet_name
+        period_code = row.get("period_code", "?")
+        relevance = row.get("score", 0)
+        label = f"[Page {i} | {sheet_name} | {page_title} | {bank_code} {period_code} | Relevance: {relevance:.2f}]"
+        context_parts.append(f"{label}\n{clean}")
+
+    context_text = "\n\n---\n\n".join(context_parts)
+
+    client = build_openai_client(config)
+    response = _call_openai_with_retry(
+        client,
+        model=config.retrieval_model,
+        max_completion_tokens=4096,
+        messages=[
+            {"role": "system", "content": _PER_BANK_RESEARCH_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"BANK: {bank_code}\n\n"
+                    f"SOURCE PAGES:\n{context_text}\n\n"
+                    f"QUESTION: {query}"
+                ),
+            },
+        ],
+    )
+    return response.choices[0].message.content or ""
+
+
+def _synthesize_multi_bank(
+    query: str,
+    per_bank_research: dict[str, str],
+    config: DataSourcesConfig,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Stage 2 of multi-bank synthesis: produce a final comparative answer.
+
+    Each bank's research summary becomes a pseudo-row so the existing
+    ``_generate_answer`` pipeline handles citation labelling and the model
+    can emit ``[Source N]`` references that map back to individual banks.
+
+    Returns the final answer string and the pseudo-rows used as context
+    (for downstream citation extraction and judge evaluation).
+    """
+    pseudo_rows: list[dict[str, Any]] = [
+        {
+            "content": research,
+            "sheet_name": bank_code,
+            "page_title": f"{bank_code} Research Summary",
+            "bank_code": bank_code,
+            "period_code": "multi",
+            "report_type": "pillar3",
+            "score": 1.0,
+            "match_sources": [],
+        }
+        for bank_code, research in per_bank_research.items()
+    ]
+    answer = _generate_answer(query, pseudo_rows, config)
+    return answer, pseudo_rows
 
 
 # ── Decomposed judge ──────────────────────────────────────────────────
@@ -868,11 +961,35 @@ def _run_single_query(
         log.info("  Q%d [X] MISS — %s NOT fully present in top %d results", qi, ", ".join(answer_pages), len(rows))
 
     # ── Stage 2: Synthesis ────────────────────────────────────────────
+    # Multi-bank queries use a two-stage map-reduce approach to avoid
+    # concatenating all banks' raw chunks into one oversized call:
+    #   Map:    per-bank extraction — one compact research summary per bank
+    #   Reduce: final synthesis — comparative answer from the summaries
     t1 = time.monotonic()
     answer = ""
     answer_rows: list[dict[str, Any]] = []
+    per_bank_research: dict[str, str] = {}
     if retrieval_error:
         answer_error = f"Skipped synthesis because retrieval failed: {retrieval_error}"
+    elif per_source_answer_pages and not answer_pages_tbd:
+        try:
+            # Group retrieved rows by bank_code
+            bank_to_rows: dict[str, list[dict[str, Any]]] = {}
+            for row in rows:
+                bc = str(row.get("bank_code") or "unknown")
+                bank_to_rows.setdefault(bc, []).append(row)
+
+            # Stage 2a: per-bank extraction
+            for bank_code, bank_rows in bank_to_rows.items():
+                log.info("  Q%d RESEARCH (%s): %d rows", qi, bank_code, len(bank_rows))
+                per_bank_research[bank_code] = _generate_per_bank_research(
+                    query, bank_code, bank_rows, config
+                )
+
+            # Stage 2b: cross-bank synthesis
+            answer, answer_rows = _synthesize_multi_bank(query, per_bank_research, config)
+        except Exception as exc:
+            answer_error = f"Synthesis error: {exc}"
     else:
         try:
             answer_rows = list(rows)
@@ -957,6 +1074,7 @@ def _run_single_query(
         "answer_pages_tbd": answer_pages_tbd,
         "per_source_answer_pages": per_source_answer_pages or {},
         "effective_answer_pages": effective_answer_pages,
+        "per_bank_research": per_bank_research,
         "query_sources": qdata["sources"],
         "matched_answer_pages": matched_answer_pages,
         "missing_answer_pages": missing_answer_pages,
