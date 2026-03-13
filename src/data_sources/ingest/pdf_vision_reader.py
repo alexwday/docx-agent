@@ -99,8 +99,13 @@ def _render_all_pages(pdf_path: Path, dpi_scale: float) -> list[bytes]:
 
     Opening once (vs. once-per-page) avoids repeated structure-tree
     validation and is significantly faster for large documents.
-    MuPDF structure-tree warnings (e.g. "no common ancestor") are
-    harmless for rasterisation and are cleared after opening.
+
+    MuPDF writes structural errors (e.g. "no common ancestor in structure
+    tree") directly to stderr at the C level — they are PDF/UA
+    accessibility issues that do not affect visual rasterisation.
+    ``mupdf_display_errors(False)`` suppresses that C-level output so it
+    does not pollute logs; ``mupdf_warnings()`` clears the Python-level
+    warning buffer.  Both are restored after rendering.
     """
     try:
         import fitz  # type: ignore[import]  # pymupdf
@@ -109,12 +114,17 @@ def _render_all_pages(pdf_path: Path, dpi_scale: float) -> list[bytes]:
             "Vision PDF processing requires PyMuPDF: pip install pymupdf"
         ) from exc
 
-    doc = fitz.open(str(pdf_path))
-    # Clear any structure-tree / format warnings accumulated during open.
-    # These are PDF/UA accessibility issues that do not affect rendering.
-    warnings = fitz.TOOLS.mupdf_warnings()
-    if warnings:
-        logger.debug("PyMuPDF warnings (non-fatal, cleared): %s", warnings)
+    # Suppress MuPDF's direct stderr error output during rendering.
+    fitz.TOOLS.mupdf_display_errors(False)
+    try:
+        doc = fitz.open(str(pdf_path))
+    except Exception as exc:
+        fitz.TOOLS.mupdf_display_errors(True)
+        logger.error("Failed to open PDF '%s': %s", pdf_path.name, exc)
+        return []
+
+    # Clear any warnings accumulated during open (structure tree etc.)
+    fitz.TOOLS.mupdf_warnings()
 
     images: list[bytes] = []
     try:
@@ -132,10 +142,11 @@ def _render_all_pages(pdf_path: Path, dpi_scale: float) -> list[bytes]:
                 )
                 images.append(b"")  # blank placeholder; vision API step will skip
             finally:
-                # Clear any per-page warnings
-                fitz.TOOLS.mupdf_warnings()
+                fitz.TOOLS.mupdf_warnings()  # clear per-page warning buffer
     finally:
         doc.close()
+        fitz.TOOLS.mupdf_display_errors(True)
+
     return images
 
 
