@@ -25,6 +25,7 @@ class DataSourcesConfig:
     vision_model: str = "gpt-5-mini"
     vision_max_tokens: int = 16000
     vision_dpi_scale: float = 2.0
+    extraction_max_workers: int = 8
     vision_max_workers: int = 4
     openai_base_url: str | None = None
     openai_oauth_token_url: str | None = None

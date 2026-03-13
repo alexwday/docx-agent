@@ -18,6 +18,7 @@ import json
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -675,6 +676,246 @@ def _normalize_judgment(judgment: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+# ── Per-query worker (runs in a thread) ───────────────────────────────
+
+def _run_single_query(
+    qi: int,
+    qdata: dict[str, Any],
+    retriever: SuppFinancialsRetriever,
+    db: DataSourcesDB,
+    config: DataSourcesConfig,
+) -> dict[str, Any]:
+    """Execute one query (retrieval → synthesis → judge) and return its result record."""
+    query = qdata["q"]
+    terms = qdata["terms"]
+    difficulty = qdata["difficulty"]
+    answer_pages = _normalize_answer_pages(qdata.get("answer_pages", []))
+    answer_pages_tbd = qdata.get("answer_pages_tbd", False)
+
+    source_dicts = [_build_source_dict(**src) for src in qdata["sources"]]
+
+    log.info("=" * 80)
+    log.info("Q%d [%s]: %s", qi, difficulty.upper(), query)
+    if answer_pages:
+        log.info("  Target: %s | Why hard: %s", ", ".join(answer_pages), qdata["why_hard"][:80])
+    else:
+        log.info("  Target: TBD | Why hard: %s", qdata["why_hard"][:80])
+    log.info("=" * 80)
+
+    retrieval_error: str | None = None
+    answer_error: str | None = None
+    judge_error: str | None = None
+    rows: list[dict[str, Any]] = []
+    found_target: bool | None = None
+    target_rank = None
+    target_score = None
+    target_via = None
+    answer_page_hits: dict[str, dict[str, Any]] = {}
+    matched_answer_pages: list[str] = []
+    missing_answer_pages: list[str] = []
+
+    if not answer_pages_tbd and answer_pages:
+        ground_truth_pages = _fetch_ground_truth_pages_multi(answer_pages, db, source_dicts)
+        missing_ground_truth_pages = [p for p in answer_pages if p not in ground_truth_pages]
+        if missing_ground_truth_pages:
+            log.warning("Could not fetch ground truth for %s", ", ".join(missing_ground_truth_pages))
+    else:
+        ground_truth_pages = {}
+        missing_ground_truth_pages = []
+
+    # ── Stage 1: Retrieval ────────────────────────────────────────────
+    t0 = time.monotonic()
+    all_rows: list[dict[str, Any]] = []
+    for source_dict in source_dicts:
+        try:
+            result = retriever.run(
+                source=source_dict,
+                research_statement=query,
+                query_terms=terms,
+            )
+            all_rows.extend(result.get("sample_rows", []))
+        except Exception as exc:
+            retrieval_error = f"Retrieval error: {exc}"
+            break
+    rows = all_rows
+    t_retrieval = time.monotonic() - t0
+
+    if not retrieval_error and not answer_pages_tbd and answer_pages:
+        answer_page_hits = _collect_answer_page_hits(rows, answer_pages)
+        matched_answer_pages = [p for p in answer_pages if p in answer_page_hits]
+        missing_answer_pages = [p for p in answer_pages if p not in answer_page_hits]
+        found_target = not missing_answer_pages
+        if matched_answer_pages:
+            if found_target:
+                target_rank = max(int(answer_page_hits[p]["rank"]) for p in answer_pages)
+                target_score = min(float(answer_page_hits[p].get("score") or 0) for p in answer_pages)
+                target_via = sorted({
+                    s_name
+                    for p in answer_pages
+                    for s_name in answer_page_hits[p].get("via", [])
+                })
+            else:
+                primary_hit = answer_page_hits.get(answer_pages[0]) or answer_page_hits[matched_answer_pages[0]]
+                target_rank = int(primary_hit["rank"])
+                target_score = primary_hit.get("score", 0)
+                target_via = primary_hit.get("via", [])
+
+    pages_returned = [
+        f"{row.get('sheet_name', '?')}({row.get('score', 0):.2f})"
+        for row in rows[:5]
+    ]
+    log.info("  Q%d RETRIEVAL (%.1fs): Pages: %s", qi, t_retrieval, ", ".join(pages_returned))
+
+    if retrieval_error:
+        log.warning("  Q%d [X] ERROR — %s", qi, retrieval_error)
+    elif answer_pages_tbd:
+        log.info("  Q%d [?] TBD — answer pages not yet known, skipping hit check", qi)
+    elif found_target:
+        page_hits = ", ".join(f"{p}#{answer_page_hits[p]['rank']}" for p in answer_pages)
+        log.info("  Q%d [+] HIT — Pages %s, combined score=%.3f, via=%s", qi, page_hits, target_score, target_via)
+    elif matched_answer_pages:
+        log.info("  Q%d [~] PARTIAL HIT — Found %s; missing %s", qi, ", ".join(matched_answer_pages), ", ".join(missing_answer_pages))
+    else:
+        log.info("  Q%d [X] MISS — %s NOT fully present in top %d results", qi, ", ".join(answer_pages), len(rows))
+
+    # ── Stage 2: Synthesis ────────────────────────────────────────────
+    t1 = time.monotonic()
+    answer = ""
+    answer_rows: list[dict[str, Any]] = []
+    if retrieval_error:
+        answer_error = f"Skipped synthesis because retrieval failed: {retrieval_error}"
+    else:
+        try:
+            answer_rows = list(rows)
+            answer = _generate_answer(query, answer_rows, config)
+        except Exception as exc:
+            answer_error = f"Synthesis error: {exc}"
+    t_answer = time.monotonic() - t1
+
+    if answer_error:
+        log.warning("  Q%d SYNTHESIS (%.1fs): %s", qi, t_answer, answer_error[:300])
+    else:
+        log.info("  Q%d SYNTHESIS (%.1fs): %s", qi, t_answer, (answer[:300] + "...") if len(answer) > 300 else answer)
+
+    # ── Stage 3: Decomposed judge ─────────────────────────────────────
+    t2 = time.monotonic()
+    if answer_pages_tbd:
+        judgment = _build_failure_judgment("Answer pages TBD — cannot evaluate retrieval hit.")
+    elif missing_ground_truth_pages:
+        judgment = _build_failure_judgment(
+            f"No ground truth available for pages: {', '.join(missing_ground_truth_pages)}",
+            inaccurate_claims=[
+                f"No ground truth available for pages: {', '.join(missing_ground_truth_pages)}"
+            ],
+            completeness_notes="Ground truth missing",
+        )
+    elif answer_error:
+        judgment = _build_failure_judgment(answer_error)
+    else:
+        try:
+            cited_source_pages = _collect_cited_source_pages(answer, answer_rows)
+            judgment = _judge_answer(
+                query,
+                answer,
+                qdata,
+                ground_truth_pages,
+                cited_source_pages,
+                config,
+            )
+        except Exception as exc:
+            judge_error = f"Judge error: {exc}"
+            judgment = _build_failure_judgment(judge_error)
+    t_judge = time.monotonic() - t2
+
+    retrieval_acc = judgment.get("retrieval_accuracy", 0)
+    answer_acc = judgment.get("answer_accuracy", 0)
+    answer_comp = judgment.get("answer_completeness", 0)
+    overall = judgment.get("overall_score", 0)
+    explanation = judgment.get("explanation", "")
+
+    log.info("  Q%d JUDGMENT (%.1fs):", qi, t_judge)
+    log.info("    Retrieval Accuracy:  %d/5 — %s", retrieval_acc, judgment.get("retrieval_notes", "")[:80])
+    log.info("    Answer Accuracy:     %d/5 — %s", answer_acc, judgment.get("accuracy_notes", "")[:80])
+    log.info("    Answer Completeness: %d/5 — %s", answer_comp, judgment.get("completeness_notes", "")[:80])
+    log.info("    Overall:             %d/5 — %s", overall, explanation[:80])
+
+    elapsed = t_retrieval + t_answer + t_judge
+    returned_pages = [
+        {
+            "source_num": idx,
+            "sheet_id": row.get("sheet_id"),
+            "sheet_name": row.get("sheet_name"),
+            "page_title": row.get("page_title"),
+            "bank_code": row.get("bank_code"),
+            "period_code": row.get("period_code"),
+            "report_type": row.get("report_type"),
+            "score": row.get("score"),
+            "match_sources": row.get("match_sources", []),
+            "matched_terms": row.get("matched_terms", []),
+            "score_breakdown": row.get("score_breakdown", {}),
+            "content": row.get("content", ""),
+        }
+        for idx, row in enumerate(rows, 1)
+    ]
+
+    return {
+        "query_num": qi,
+        "query": query,
+        "difficulty": difficulty,
+        "terms": terms,
+        "why_hard": qdata["why_hard"],
+        "answer_pages": answer_pages,
+        "answer_pages_tbd": answer_pages_tbd,
+        "query_sources": qdata["sources"],
+        "matched_answer_pages": matched_answer_pages,
+        "missing_answer_pages": missing_answer_pages,
+        "answer_page_ranks": {p: int(h["rank"]) for p, h in answer_page_hits.items()},
+        "answer_page_scores": {p: float(h.get("score") or 0) for p, h in answer_page_hits.items()},
+        "hit": found_target,
+        "rank": target_rank,
+        "score": target_score,
+        "via": target_via,
+        "total_returned": len(rows),
+        "elapsed_s": round(elapsed, 1),
+        "model_answer": answer,
+        "model_answer_source_refs": _extract_answer_source_refs(answer),
+        "answer_context_pages": [
+            str(row.get("sheet_name") or "")
+            for row in answer_rows
+            if str(row.get("sheet_name") or "").strip()
+        ],
+        "retrieval_accuracy": retrieval_acc,
+        "answer_accuracy": answer_acc,
+        "answer_completeness": answer_comp,
+        "inaccurate_claims": judgment.get("inaccurate_claims", []),
+        "overall_score": overall,
+        "explanation": explanation,
+        "validated_answer_summary": qdata.get("expected_answer_summary", ""),
+        "validated_answer_citations": qdata.get("answer_citations", []),
+        "target_contents": ground_truth_pages,
+        "judge": judgment,
+        "errors": {
+            "retrieval": retrieval_error,
+            "answer": answer_error,
+            "judge": judge_error,
+        },
+        "retrieval": {
+            "hit": found_target,
+            "rank": target_rank,
+            "score": target_score,
+            "via": target_via,
+            "total_returned": len(rows),
+            "returned_pages": returned_pages,
+        },
+        "timings": {
+            "retrieval_s": round(t_retrieval, 3),
+            "answer_s": round(t_answer, 3),
+            "judge_s": round(t_judge, 3),
+            "elapsed_s": round(elapsed, 3),
+        },
+    }
+
+
 # ── Main test runner ──────────────────────────────────────────────────
 
 def run_stress_test(
@@ -682,6 +923,7 @@ def run_stress_test(
     *,
     query_filter: str | None = None,
     max_queries: int | None = None,
+    parallel_queries: int = 4,
 ) -> dict[str, Any]:
     """Run the stress test across all (or filtered) queries and write reports.
 
@@ -690,6 +932,7 @@ def run_stress_test(
         query_filter: If set, only run queries whose sources include this report_type
             (e.g. ``"supp_financials"``).
         max_queries: Cap the number of queries run (useful for quick previews).
+        parallel_queries: Number of queries to run concurrently (default 4).
     """
     logging.basicConfig(
         level=logging.INFO,
@@ -710,244 +953,27 @@ def run_stress_test(
     if max_queries:
         queries = queries[:max_queries]
 
+    log.info("Running %d queries with parallel_queries=%d", len(queries), parallel_queries)
+
     all_results: list[dict[str, Any]] = []
-    # Track unique source dicts used (keyed by source_id for deduplication)
-    sources_seen: dict[str, dict[str, Any]] = {}
 
-    for qi, qdata in enumerate(queries, 1):
-        query = qdata["q"]
-        terms = qdata["terms"]
-        difficulty = qdata["difficulty"]
-        answer_pages = _normalize_answer_pages(qdata.get("answer_pages", []))
-        answer_pages_tbd = qdata.get("answer_pages_tbd", False)
-
-        source_dicts = [_build_source_dict(**src) for src in qdata["sources"]]
-        for sd in source_dicts:
-            sources_seen[sd["source_id"]] = sd
-
-        log.info("=" * 80)
-        log.info("Q%d [%s]: %s", qi, difficulty.upper(), query)
-        if answer_pages:
-            log.info("  Target: %s | Why hard: %s", ", ".join(answer_pages), qdata["why_hard"][:80])
-        else:
-            log.info("  Target: TBD | Why hard: %s", qdata["why_hard"][:80])
-        log.info("=" * 80)
-
-        retrieval_error: str | None = None
-        answer_error: str | None = None
-        judge_error: str | None = None
-        rows: list[dict[str, Any]] = []
-        found_target: bool | None = None  # None = TBD
-        target_rank = None
-        target_score = None
-        target_via = None
-        answer_page_hits: dict[str, dict[str, Any]] = {}
-        matched_answer_pages: list[str] = []
-        missing_answer_pages: list[str] = []
-
-        # Fetch ground truth (only possible when answer_pages are known)
-        if not answer_pages_tbd and answer_pages:
-            ground_truth_pages = _fetch_ground_truth_pages_multi(answer_pages, db, source_dicts)
-            missing_ground_truth_pages = [p for p in answer_pages if p not in ground_truth_pages]
-            if missing_ground_truth_pages:
-                log.warning("Could not fetch ground truth for %s", ", ".join(missing_ground_truth_pages))
-        else:
-            ground_truth_pages = {}
-            missing_ground_truth_pages = []
-
-        # ── Stage 1: Retrieval (one call per source, merge results) ──
-        t0 = time.monotonic()
-        all_rows: list[dict[str, Any]] = []
-        for source_dict in source_dicts:
-            try:
-                result = retriever.run(
-                    source=source_dict,
-                    research_statement=query,
-                    query_terms=terms,
-                )
-                all_rows.extend(result.get("sample_rows", []))
-            except Exception as exc:
-                retrieval_error = f"Retrieval error: {exc}"
-                break
-        rows = all_rows
-        t_retrieval = time.monotonic() - t0
-
-        if not retrieval_error and not answer_pages_tbd and answer_pages:
-            answer_page_hits = _collect_answer_page_hits(rows, answer_pages)
-            matched_answer_pages = [p for p in answer_pages if p in answer_page_hits]
-            missing_answer_pages = [p for p in answer_pages if p not in answer_page_hits]
-            found_target = not missing_answer_pages
-            if matched_answer_pages:
-                if found_target:
-                    target_rank = max(int(answer_page_hits[p]["rank"]) for p in answer_pages)
-                    target_score = min(float(answer_page_hits[p].get("score") or 0) for p in answer_pages)
-                    target_via = sorted({
-                        s_name
-                        for p in answer_pages
-                        for s_name in answer_page_hits[p].get("via", [])
-                    })
-                else:
-                    primary_hit = answer_page_hits.get(answer_pages[0]) or answer_page_hits[matched_answer_pages[0]]
-                    target_rank = int(primary_hit["rank"])
-                    target_score = primary_hit.get("score", 0)
-                    target_via = primary_hit.get("via", [])
-
-        # Log retrieval
-        pages_returned = [
-            f"{row.get('sheet_name', '?')}({row.get('score', 0):.2f})"
-            for row in rows[:5]
-        ]
-        log.info("  RETRIEVAL (%.1fs): Pages: %s", t_retrieval, ", ".join(pages_returned))
-
-        if retrieval_error:
-            log.warning("  [X] ERROR — %s", retrieval_error)
-        elif answer_pages_tbd:
-            log.info("  [?] TBD — answer pages not yet known, skipping hit check")
-        elif found_target:
-            page_hits = ", ".join(f"{p}#{answer_page_hits[p]['rank']}" for p in answer_pages)
-            log.info("  [+] HIT — Pages %s, combined score=%.3f, via=%s", page_hits, target_score, target_via)
-        elif matched_answer_pages:
-            log.info("  [~] PARTIAL HIT — Found %s; missing %s", ", ".join(matched_answer_pages), ", ".join(missing_answer_pages))
-        else:
-            log.info("  [X] MISS — %s NOT fully present in top %d results", ", ".join(answer_pages), len(rows))
-
-        # ── Stage 2: Synthesis ──
-        t1 = time.monotonic()
-        answer = ""
-        answer_rows: list[dict[str, Any]] = []
-        if retrieval_error:
-            answer_error = f"Skipped synthesis because retrieval failed: {retrieval_error}"
-        else:
-            try:
-                answer_rows = list(rows)
-                answer = _generate_answer(query, answer_rows, config)
-            except Exception as exc:
-                answer_error = f"Synthesis error: {exc}"
-        t_answer = time.monotonic() - t1
-
-        if answer_error:
-            log.warning("  SYNTHESIS (%.1fs): %s", t_answer, answer_error[:300])
-        else:
-            log.info("  SYNTHESIS (%.1fs): %s", t_answer, (answer[:300] + "...") if len(answer) > 300 else answer)
-
-        # ── Stage 3: Decomposed judge ──
-        t2 = time.monotonic()
-        if answer_pages_tbd:
-            judgment = _build_failure_judgment("Answer pages TBD — cannot evaluate retrieval hit.")
-        elif missing_ground_truth_pages:
-            judgment = _build_failure_judgment(
-                f"No ground truth available for pages: {', '.join(missing_ground_truth_pages)}",
-                inaccurate_claims=[
-                    f"No ground truth available for pages: {', '.join(missing_ground_truth_pages)}"
-                ],
-                completeness_notes="Ground truth missing",
-            )
-        elif answer_error:
-            judgment = _build_failure_judgment(answer_error)
-        else:
-            try:
-                cited_source_pages = _collect_cited_source_pages(answer, answer_rows)
-                judgment = _judge_answer(
-                    query,
-                    answer,
-                    qdata,
-                    ground_truth_pages,
-                    cited_source_pages,
-                    config,
-                )
-            except Exception as exc:
-                judge_error = f"Judge error: {exc}"
-                judgment = _build_failure_judgment(judge_error)
-        t_judge = time.monotonic() - t2
-
-        retrieval_acc = judgment.get("retrieval_accuracy", 0)
-        answer_acc = judgment.get("answer_accuracy", 0)
-        answer_comp = judgment.get("answer_completeness", 0)
-        overall = judgment.get("overall_score", 0)
-        explanation = judgment.get("explanation", "")
-
-        log.info("  JUDGMENT (%.1fs):", t_judge)
-        log.info("    Retrieval Accuracy:  %d/5 — %s", retrieval_acc, judgment.get("retrieval_notes", "")[:80])
-        log.info("    Answer Accuracy:     %d/5 — %s", answer_acc, judgment.get("accuracy_notes", "")[:80])
-        log.info("    Answer Completeness: %d/5 — %s", answer_comp, judgment.get("completeness_notes", "")[:80])
-        log.info("    Overall:             %d/5 — %s", overall, explanation[:80])
-
-        elapsed = t_retrieval + t_answer + t_judge
-        returned_pages = [
-            {
-                "source_num": idx,
-                "sheet_id": row.get("sheet_id"),
-                "sheet_name": row.get("sheet_name"),
-                "page_title": row.get("page_title"),
-                "bank_code": row.get("bank_code"),
-                "period_code": row.get("period_code"),
-                "report_type": row.get("report_type"),
-                "score": row.get("score"),
-                "match_sources": row.get("match_sources", []),
-                "matched_terms": row.get("matched_terms", []),
-                "score_breakdown": row.get("score_breakdown", {}),
-                "content": row.get("content", ""),
-            }
-            for idx, row in enumerate(rows, 1)
-        ]
-
-        record: dict[str, Any] = {
-            "query_num": qi,
-            "query": query,
-            "difficulty": difficulty,
-            "terms": terms,
-            "why_hard": qdata["why_hard"],
-            "answer_pages": answer_pages,
-            "answer_pages_tbd": answer_pages_tbd,
-            "query_sources": qdata["sources"],
-            "matched_answer_pages": matched_answer_pages,
-            "missing_answer_pages": missing_answer_pages,
-            "answer_page_ranks": {p: int(h["rank"]) for p, h in answer_page_hits.items()},
-            "answer_page_scores": {p: float(h.get("score") or 0) for p, h in answer_page_hits.items()},
-            "hit": found_target,
-            "rank": target_rank,
-            "score": target_score,
-            "via": target_via,
-            "total_returned": len(rows),
-            "elapsed_s": round(elapsed, 1),
-            "model_answer": answer,
-            "model_answer_source_refs": _extract_answer_source_refs(answer),
-            "answer_context_pages": [
-                str(row.get("sheet_name") or "")
-                for row in answer_rows
-                if str(row.get("sheet_name") or "").strip()
-            ],
-            "retrieval_accuracy": retrieval_acc,
-            "answer_accuracy": answer_acc,
-            "answer_completeness": answer_comp,
-            "inaccurate_claims": judgment.get("inaccurate_claims", []),
-            "overall_score": overall,
-            "explanation": explanation,
-            "validated_answer_summary": qdata.get("expected_answer_summary", ""),
-            "validated_answer_citations": qdata.get("answer_citations", []),
-            "target_contents": ground_truth_pages,
-            "judge": judgment,
-            "errors": {
-                "retrieval": retrieval_error,
-                "answer": answer_error,
-                "judge": judge_error,
-            },
-            "retrieval": {
-                "hit": found_target,
-                "rank": target_rank,
-                "score": target_score,
-                "via": target_via,
-                "total_returned": len(rows),
-                "returned_pages": returned_pages,
-            },
-            "timings": {
-                "retrieval_s": round(t_retrieval, 3),
-                "answer_s": round(t_answer, 3),
-                "judge_s": round(t_judge, 3),
-                "elapsed_s": round(elapsed, 3),
-            },
+    with ThreadPoolExecutor(max_workers=parallel_queries) as pool:
+        futures = {
+            pool.submit(_run_single_query, qi, qdata, retriever, db, config): qi
+            for qi, qdata in enumerate(queries, 1)
         }
-        all_results.append(record)
+        for future in as_completed(futures):
+            all_results.append(future.result())
+
+    # Restore query order for consistent report output
+    all_results.sort(key=lambda r: r["query_num"])
+
+    # Collect unique source dicts from results
+    sources_seen: dict[str, dict[str, Any]] = {}
+    for result in all_results:
+        for src in result["query_sources"]:
+            sd = _build_source_dict(**src)
+            sources_seen[sd["source_id"]] = sd
 
     # ── Summary ───────────────────────────────────────────────────
     evaluable = [r for r in all_results if r["hit"] is not None]
@@ -1005,11 +1031,18 @@ def main() -> None:
         default=None,
         help="Run only the first N matching queries (useful for quick previews).",
     )
+    parser.add_argument(
+        "--parallel-queries",
+        type=int,
+        default=4,
+        help="Number of queries to run in parallel (default: 4).",
+    )
     args = parser.parse_args()
     run_stress_test(
         output_dir=Path(args.output_dir),
         query_filter=args.source_filter,
         max_queries=args.max_queries,
+        parallel_queries=args.parallel_queries,
     )
 
 

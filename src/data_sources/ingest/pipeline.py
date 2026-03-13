@@ -84,38 +84,44 @@ def ingest_supplementary_report(
     logger.info("Read %d sheets", len(raw_sheets))
 
     # ── Step 2: LLM extraction ─────────────────────────────────────
-    logger.info("Step 2/4: Extracting metadata via LLM (%s)", config.extraction_model)
-    report_sheets: list[ReportSheet] = []
-    prior_titles: list[str] = []
+    logger.info(
+        "Step 2/4: Extracting metadata via LLM (%s, workers=%d)",
+        config.extraction_model,
+        config.extraction_max_workers,
+    )
+    # Use raw sheet names as prior-context proxies so all sheets can be
+    # extracted in parallel (sheet_name[:i] is equivalent to the prior-title
+    # chain and known upfront without waiting for sequential LLM results).
+    raw_names = [raw.sheet_name for raw in raw_sheets]
 
-    for raw in raw_sheets:
+    def _extract_one(args: tuple[int, RawSheet]) -> tuple[int, ReportSheet]:
+        i, raw = args
         extraction = extract_sheet_metadata(
             raw,
             config=config,
             model=config.extraction_model,
             max_tokens=config.extraction_max_tokens,
-            prior_sheet_titles=prior_titles,
+            prior_sheet_titles=raw_names[:i],
         )
-        report_sheets.append(
-            ReportSheet(
-                sheet_index=raw.sheet_index,
-                sheet_name=raw.sheet_name,
-                raw_content=raw.raw_content,
-                page_title=extraction.page_title,
-                is_data_sheet=extraction.is_data_sheet,
-                summary=extraction.summary,
-                keywords=extraction.keywords,
-                metrics=extraction.metrics,
-                context_note=extraction.context_note if extraction.requires_prior_context else None,
-                metadata={
-                    "requires_prior_context": extraction.requires_prior_context,
-                },
-            )
+        return i, ReportSheet(
+            sheet_index=raw.sheet_index,
+            sheet_name=raw.sheet_name,
+            raw_content=raw.raw_content,
+            page_title=extraction.page_title,
+            is_data_sheet=extraction.is_data_sheet,
+            summary=extraction.summary,
+            keywords=extraction.keywords,
+            metrics=extraction.metrics,
+            context_note=extraction.context_note if extraction.requires_prior_context else None,
+            metadata={"requires_prior_context": extraction.requires_prior_context},
         )
-        if extraction.page_title:
-            prior_titles.append(extraction.page_title)
-        else:
-            prior_titles.append(raw.sheet_name)
+
+    with ThreadPoolExecutor(max_workers=config.extraction_max_workers) as pool:
+        ordered = sorted(
+            pool.map(_extract_one, enumerate(raw_sheets)),
+            key=lambda x: x[0],
+        )
+    report_sheets = [sheet for _, sheet in ordered]
 
     # ── Step 3: Embed summaries + individual keywords + individual metrics ──
     logger.info("Step 3/4: Embedding summaries, keywords, and metrics")
