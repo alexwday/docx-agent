@@ -34,28 +34,14 @@ from data_sources.scripts.stress_test_report import build_report_payload, write_
 from word_store.db import PostgresStore
 
 
-# ── Per-bank extraction prompt (stage 1 of multi-bank synthesis) ──────
-
-_PER_BANK_RESEARCH_PROMPT = """\
-You are extracting specific financial metrics from pages of a Canadian bank's \
-quarterly regulatory (Pillar 3) disclosure. Your output will be passed to a \
-second model that synthesises a comparative answer across multiple banks.
-
-Extract only the data directly relevant to the question. Be precise and concise:
-- State exact values with their period labels exactly as they appear in the source.
-- Include the row number or label from the source table so the downstream model \
-  can verify provenance.
-- Do not reformat values (e.g. keep 13.1% as 13.1%, not 0.131).
-- Do not add interpretation, caveats, or context beyond what is in the source.
-- If a value is not present in the provided pages, state that explicitly.\
-"""
-
 # ── SOTA synthesis prompt ─────────────────────────────────────────────
 
 _ANSWER_SYSTEM_PROMPT = """\
-You are a senior financial data analyst answering questions using pages from a \
-Canadian bank's quarterly supplementary financial information package. You have \
-expertise in IFRS accounting, bank financial analysis, and regulatory capital.
+You are a senior financial data analyst answering questions using pages from \
+Canadian bank financial disclosures — which may include supplementary financial \
+information packages, Pillar 3 regulatory capital disclosures, or investor \
+presentations. You have expertise in IFRS accounting, bank financial analysis, \
+and regulatory capital.
 
 PROCESS — follow these steps before writing your answer:
 1. Each source page includes a **Relevance** score (0–1) from the retrieval \
@@ -151,15 +137,20 @@ The reader should grasp the key finding in seconds.
    SINGLE-PERIOD (when only one period's data is needed):
    | Data Source | Bank | Platform | Metric | Value | Type |
    |---|---|---|---|---|---|
-   | Supplementary Financials | RY | Enterprise | Net Interest Income | 4,567 | $M |
+   | Pillar 3 Regulatory Disclosure | BMO | Enterprise | CET1 Ratio | 13.1 | % |
 
    MULTI-PERIOD (when comparing across periods — use one column per period):
    | Data Source | Bank | Platform | Metric | 2026 Q1 | 2025 Q4 | Type |
    |---|---|---|---|---|---|---|
-   | Supplementary Financials | RY | Enterprise | Net Interest Income | 4,567 | 4,321 | $M |
+   | Pillar 3 Regulatory Disclosure | BMO | Enterprise | CET1 Ratio | 13.1 | 13.3 | % |
 
    Column rules:
-   - Data Source: "Supplementary Financials"
+   - Data Source: derive from the report_type in the source label:
+       supp_financials   → "Supplementary Financials"
+       pillar3           → "Pillar 3 Regulatory Disclosure"
+       investor_slides   → "Investor Presentation"
+     Use the report_type of the source being cited in that row. If sources
+     span multiple report types in one table, each row uses its own type.
    - Bank: use ticker symbol — RBC→RY, TD→TD, BMO→BMO, Scotiabank→BNS,
      CIBC→CM, National Bank→NA. If bank_code is unrecognized, use it as-is.
    - Platform: infer from the source page content. Use "Enterprise" for
@@ -466,12 +457,19 @@ def _generate_per_bank_research(
     query: str,
     bank_code: str,
     bank_rows: list[dict[str, Any]],
+    all_bank_codes: list[str],
     config: DataSourcesConfig,
 ) -> str:
-    """Stage 1 of multi-bank synthesis: extract relevant metrics for one bank.
+    """Stage 1 of multi-bank synthesis: produce a full research response for one bank.
 
-    Produces a compact research summary that is passed to the final synthesis
-    step, keeping the per-bank call well within token limits.
+    Uses the same system prompt and response format as a normal single-bank
+    query. A per-bank context header in the user message tells the model:
+    - which bank it is researching
+    - that identical research is being run for the other banks in parallel
+    - to scope its answer entirely to this bank's data
+
+    The resulting per-bank responses are then fed as sources to the final
+    synthesis step.
     """
     context_parts = []
     for i, row in enumerate(bank_rows, 1):
@@ -482,11 +480,21 @@ def _generate_per_bank_research(
         sheet_name = row.get("sheet_name", "?")
         page_title = row.get("page_title") or sheet_name
         period_code = row.get("period_code", "?")
+        report_type = row.get("report_type", "?")
         relevance = row.get("score", 0)
-        label = f"[Page {i} | {sheet_name} | {page_title} | {bank_code} {period_code} | Relevance: {relevance:.2f}]"
+        label = f"[Source {i} | {report_type} | {sheet_name} | {page_title} | {bank_code} {period_code} | Relevance: {relevance:.2f}]"
         context_parts.append(f"{label}\n{clean}")
 
     context_text = "\n\n---\n\n".join(context_parts)
+
+    other_banks = [b for b in all_bank_codes if b != bank_code]
+    per_bank_context = (
+        f"PER-BANK RESEARCH MODE\n"
+        f"You are researching {bank_code} only. "
+        f"Identical research is being run in parallel for: {', '.join(other_banks)}. "
+        f"Answer the question solely from {bank_code}'s source pages below. "
+        f"Do not reference or compare other banks — that synthesis happens in a later step.\n\n"
+    )
 
     client = build_openai_client(config)
     response = _call_openai_with_retry(
@@ -494,11 +502,11 @@ def _generate_per_bank_research(
         model=config.retrieval_model,
         max_completion_tokens=4096,
         messages=[
-            {"role": "system", "content": _PER_BANK_RESEARCH_PROMPT},
+            {"role": "system", "content": _ANSWER_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": (
-                    f"BANK: {bank_code}\n\n"
+                    f"{per_bank_context}"
                     f"SOURCE PAGES:\n{context_text}\n\n"
                     f"QUESTION: {query}"
                 ),
@@ -515,13 +523,16 @@ def _synthesize_multi_bank(
 ) -> tuple[str, list[dict[str, Any]]]:
     """Stage 2 of multi-bank synthesis: produce a final comparative answer.
 
-    Each bank's research summary becomes a pseudo-row so the existing
-    ``_generate_answer`` pipeline handles citation labelling and the model
-    can emit ``[Source N]`` references that map back to individual banks.
+    Each bank's per-bank research response becomes a pseudo-row so the
+    existing ``_generate_answer`` pipeline handles citation labelling and
+    the model can emit ``[Source N]`` references that map back to individual
+    banks.  A synthesis context header tells the model it is combining
+    per-bank research, not raw source pages.
 
     Returns the final answer string and the pseudo-rows used as context
     (for downstream citation extraction and judge evaluation).
     """
+    banks = list(per_bank_research.keys())
     pseudo_rows: list[dict[str, Any]] = [
         {
             "content": research,
@@ -535,7 +546,42 @@ def _synthesize_multi_bank(
         }
         for bank_code, research in per_bank_research.items()
     ]
-    answer = _generate_answer(query, pseudo_rows, config)
+
+    context_parts = []
+    for i, row in enumerate(pseudo_rows, 1):
+        label = (
+            f"[Source {i} | pillar3 | {row['bank_code']} Research Summary "
+            f"| {row['bank_code']} multi | Relevance: 1.00]"
+        )
+        context_parts.append(f"{label}\n{row['content']}")
+    context_text = "\n\n---\n\n".join(context_parts)
+
+    synthesis_context = (
+        f"CROSS-BANK SYNTHESIS MODE\n"
+        f"The sources below are per-bank research responses for: {', '.join(banks)}. "
+        f"Each source is a complete analysis for one bank derived from that bank's "
+        f"regulatory disclosure pages. Synthesise them into a single comparative "
+        f"answer covering all {len(banks)} banks.\n\n"
+    )
+
+    client = build_openai_client(config)
+    response = _call_openai_with_retry(
+        client,
+        model=config.retrieval_model,
+        max_completion_tokens=config.retrieval_max_tokens,
+        messages=[
+            {"role": "system", "content": _ANSWER_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"{synthesis_context}"
+                    f"SOURCE PAGES:\n{context_text}\n\n"
+                    f"QUESTION: {query}"
+                ),
+            },
+        ],
+    )
+    answer = response.choices[0].message.content or ""
     return answer, pseudo_rows
 
 
@@ -980,10 +1026,11 @@ def _run_single_query(
                 bank_to_rows.setdefault(bc, []).append(row)
 
             # Stage 2a: per-bank extraction
+            all_bank_codes = list(bank_to_rows.keys())
             for bank_code, bank_rows in bank_to_rows.items():
                 log.info("  Q%d RESEARCH (%s): %d rows", qi, bank_code, len(bank_rows))
                 per_bank_research[bank_code] = _generate_per_bank_research(
-                    query, bank_code, bank_rows, config
+                    query, bank_code, bank_rows, all_bank_codes, config
                 )
 
             # Stage 2b: cross-bank synthesis
