@@ -33,6 +33,29 @@ _PERIOD_RE = re.compile(r"^Q(\d)_(\d{4})$", re.IGNORECASE)
 _SUPPORTED_EXTENSIONS = {".xlsx", ".pdf"}
 
 
+def _count_file_pages(path: Path, ext: str) -> int:
+    """Return the number of sheets/pages in a file without fully parsing it."""
+    if ext == ".xlsx":
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+            count = len(wb.sheetnames)
+            wb.close()
+            return count
+        except Exception:
+            return -1
+    elif ext == ".pdf":
+        try:
+            import fitz  # type: ignore[import]
+            doc = fitz.open(str(path))
+            count = len(doc)
+            doc.close()
+            return count
+        except Exception:
+            return -1
+    return -1
+
+
 def _parse_period(period_code: str) -> tuple[int, int]:
     """Convert 'Q1_2026' → (fiscal_year=2026, fiscal_quarter=1)."""
     match = _PERIOD_RE.match(period_code)
@@ -115,11 +138,14 @@ def run_batch(
             continue
 
         if skip_existing:
-            sheet_count = db.document_sheet_count(entry["bank_code"], entry["report_type"], entry["period_code"])
-            if sheet_count > 0:
-                log.info("Skipping (already ingested, %d sheets): %s", sheet_count, label)
+            db_count = db.document_sheet_count(entry["bank_code"], entry["report_type"], entry["period_code"])
+            expected = _count_file_pages(path, entry["ext"])
+            if db_count > 0 and (expected < 0 or db_count >= expected):
+                log.info("Skipping (complete: %d/%d sheets): %s", db_count, expected, label)
                 results.append({"label": label, "status": "skipped", "elapsed_s": 0})
                 continue
+            if db_count > 0 and db_count < expected:
+                log.info("Re-ingesting (partial: %d/%d sheets in DB): %s", db_count, expected, label)
 
         log.info("Ingesting: %s", label)
         t0 = time.monotonic()
