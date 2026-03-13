@@ -81,6 +81,16 @@ output only: ## Blank or Decorative Page
 """
 
 
+def _split_image_vertically(img_bytes: bytes) -> tuple[bytes, bytes]:
+    """Split a PNG image into top and bottom halves using PyMuPDF's in-memory Pixmap."""
+    import fitz  # type: ignore[import]
+    src = fitz.Pixmap(img_bytes)
+    mid = src.height // 2
+    top = fitz.Pixmap(src, fitz.IRect(0, 0, src.width, mid))
+    bot = fitz.Pixmap(src, fitz.IRect(0, mid, src.width, src.height))
+    return top.tobytes("png"), bot.tobytes("png")
+
+
 def _retryable_errors() -> tuple[type[Exception], ...]:
     """Build the tuple of retryable OpenAI exception classes at call time."""
     try:
@@ -250,16 +260,31 @@ def read_pdf_sheets_with_vision(
         if not img:
             logger.warning("  Page %d/%d skipped (render failed)", idx + 1, num_pages)
             return idx, "## Page Render Failed\n\nThis page could not be rendered."
-        content = _call_vision_api(
-            img,
-            config=config,
-            model=model,
-            max_tokens=max_tokens,
-        )
-        logger.info(
-            "  Page %d/%d extracted (%d chars)", idx + 1, num_pages, len(content)
-        )
-        return idx, content
+
+        # First attempt: full page
+        try:
+            content = _call_vision_api(img, config=config, model=model, max_tokens=max_tokens)
+            logger.info("  Page %d/%d extracted (%d chars)", idx + 1, num_pages, len(content))
+            return idx, content
+        except Exception as exc:
+            logger.warning(
+                "  Page %d/%d full-page extraction failed (%s) — retrying as top/bottom halves",
+                idx + 1, num_pages, exc,
+            )
+
+        # Fallback: split into top and bottom halves, call twice, concatenate
+        try:
+            top_img, bot_img = _split_image_vertically(img)
+            top_content = _call_vision_api(top_img, config=config, model=model, max_tokens=max_tokens)
+            bot_content = _call_vision_api(bot_img, config=config, model=model, max_tokens=max_tokens)
+            content = top_content + "\n\n" + bot_content
+            logger.info(
+                "  Page %d/%d extracted as halves (%d chars)", idx + 1, num_pages, len(content)
+            )
+            return idx, content
+        except Exception as exc:
+            logger.error("  Page %d/%d failed even as halves: %s", idx + 1, num_pages, exc)
+            return idx, f"## Page Extraction Failed\n\nError: {exc}"
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_process, i): i for i in range(num_pages)}
