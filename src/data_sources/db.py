@@ -93,6 +93,21 @@ class DataSourcesDB:
 
     # ── Report sheets ──────────────────────────────────────────────
 
+    def document_sheet_count(self, bank_code: str, report_type: str, period_code: str) -> int:
+        """Return the number of sheets already ingested for this document (0 if not ingested)."""
+        with self.store.connection() as conn:
+            cur = conn.execute(
+                """
+                SELECT COUNT(rs.sheet_id)
+                FROM data_sources.report_sheets rs
+                JOIN data_sources.report_documents rd ON rd.document_id = rs.document_id
+                WHERE rd.bank_code = %s AND rd.report_type = %s AND rd.period_code = %s
+                """,
+                (bank_code, report_type, period_code),
+            )
+            row = cur.fetchone()
+            return int(row[0]) if row else 0
+
     def delete_sheets_for_document(self, document_id: UUID) -> int:
         """Delete all sheets (and their metrics/keyword embeddings) for a document."""
         with self.store.connection() as conn:

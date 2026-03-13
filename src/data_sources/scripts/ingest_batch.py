@@ -83,6 +83,7 @@ def run_batch(
     *,
     dry_run: bool = False,
     ensure_schema: bool = False,
+    skip_existing: bool = False,
 ) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -112,6 +113,13 @@ def run_batch(
             log.info("[DRY RUN] Would ingest: %s", label)
             results.append({"label": label, "status": "dry_run"})
             continue
+
+        if skip_existing:
+            sheet_count = db.document_sheet_count(entry["bank_code"], entry["report_type"], entry["period_code"])
+            if sheet_count > 0:
+                log.info("Skipping (already ingested, %d sheets): %s", sheet_count, label)
+                results.append({"label": label, "status": "skipped", "elapsed_s": 0})
+                continue
 
         log.info("Ingesting: %s", label)
         t0 = time.monotonic()
@@ -161,7 +169,8 @@ def run_batch(
     print()
     ok = sum(1 for r in results if r["status"] == "ok")
     errors = sum(1 for r in results if r["status"] == "error")
-    log.info("Done: %d ok, %d errors, %d dry-run", ok, errors, len(results) - ok - errors)
+    skipped = sum(1 for r in results if r["status"] == "skipped")
+    log.info("Done: %d ok, %d errors, %d skipped, %d dry-run", ok, errors, skipped, len(results) - ok - errors - skipped)
 
 
 def main() -> None:
@@ -183,8 +192,13 @@ def main() -> None:
         action="store_true",
         help="Run schema migrations before ingesting.",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip files that already have sheets in the database.",
+    )
     args = parser.parse_args()
-    run_batch(Path(args.root), dry_run=args.dry_run, ensure_schema=args.ensure_schema)
+    run_batch(Path(args.root), dry_run=args.dry_run, ensure_schema=args.ensure_schema, skip_existing=args.skip_existing)
 
 
 if __name__ == "__main__":
