@@ -29,6 +29,15 @@ elif [[ -f "$PROJECT_DIR/venv/bin/activate" ]]; then
     source "$PROJECT_DIR/venv/bin/activate"
 fi
 
+# Load .env if present (project root takes precedence over exported shell vars)
+ENV_FILE="$PROJECT_DIR/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    set -o allexport
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +o allexport
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -99,12 +108,11 @@ done
 # Validate required env vars
 MISSING=()
 [[ -z "${DOCX_AGENT_DATABASE_DSN:-}${DATABASE_URL:-}" ]] && MISSING+=("DOCX_AGENT_DATABASE_DSN")
-[[ -z "${OPENAI_API_KEY:-}" ]] && MISSING+=("OPENAI_API_KEY")
+# Accept either a direct API key or the OAuth client-id used by internal gateways
+[[ -z "${OPENAI_API_KEY:-}${OPENAI_OAUTH_CLIENT_ID:-}" ]] && MISSING+=("OPENAI_API_KEY (or OPENAI_OAUTH_CLIENT_ID)")
 if [[ ${#MISSING[@]} -gt 0 ]]; then
     err "Missing required environment variables: ${MISSING[*]}"
-    err "Export them before running, e.g.:"
-    err "  export DOCX_AGENT_DATABASE_DSN='postgresql://user:pass@host:5432/db'"
-    err "  export OPENAI_API_KEY='sk-...'"
+    err "Set them in $PROJECT_DIR/.env or export before running."
     exit 1
 fi
 
